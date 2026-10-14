@@ -1,0 +1,7 @@
+scene,thr,pts_mean,q_mean,reach,q_min,q_max
+moving_plume,10,20.0,846.4,1.0,515,1334
+moving_plume,20,20.0,727.7,1.0,540,957
+moving_plume,30,20.0,836.8,1.0,670,1320
+moving_plume,40,20.0,846.2,1.0,525,1298
+moving_plume,60,20.0,836.8,1.0,583,1148
+moving_plume,80,20.0,837.9,1.0,583,1091

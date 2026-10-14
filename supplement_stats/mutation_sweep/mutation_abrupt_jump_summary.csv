@@ -1,0 +1,7 @@
+scene,thr,pts_mean,q_mean,reach,q_min,q_max
+abrupt_jump,10,17.6,1352.8,0.6,1058,1500
+abrupt_jump,20,17.2,1274.4,0.7,876,1500
+abrupt_jump,30,15.4,1451.6,0.5,1363,1500
+abrupt_jump,40,17.2,1344.0,0.7,988,1500
+abrupt_jump,60,17.5,1287.2,0.7,1055,1500
+abrupt_jump,80,17.0,1334.8,0.6,1137,1500

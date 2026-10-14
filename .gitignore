@@ -1,0 +1,43 @@
+# ========================
+# Python runtime & virtual environments
+# ========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+.env
+
+# ========================
+# Third-party raw data (NOT distributed; acquire via scripts, see README)
+# ========================
+data/
+oracle_npz/
+
+# ========================
+# External binary library (cubiomes) — compile yourself, see README
+# ========================
+src/cubiomes.dll
+
+# ========================
+# IDE & editor
+# ========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ========================
+# Temporary debug files
+# ========================
+debug_*.py
+test_temp_*

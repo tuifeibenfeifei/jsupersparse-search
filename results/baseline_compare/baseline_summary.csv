@@ -1,0 +1,13 @@
+scenario_key,scenario,target,method,mean_points_found,mean_total_queries,hit_rate,min_points,max_points
+pollution,污染溯源,15,random,15.0,219.9,1.0,15,15
+pollution,污染溯源,15,grid,0.0,800.0,0.0,0,0
+pollution,污染溯源,15,hill_climb,15.0,58.3,1.0,15,15
+maritime,海上搜救,15,random,0.5,600.0,0.0,0,2
+maritime,海上搜救,15,grid,0.0,600.0,0.0,0,0
+maritime,海上搜救,15,hill_climb,5.9,501.6,0.3,0,15
+driftA,逆向漂移(阶段A),6,random,2.0,400.0,0.0,0,5
+driftA,逆向漂移(阶段A),6,grid,0.0,400.0,0.0,0,0
+driftA,逆向漂移(阶段A),6,hill_climb,4.8,257.9,0.6,0,6
+mineralA,矿化露头(阶段A),10,random,10.0,274.1,1.0,10,10
+mineralA,矿化露头(阶段A),10,grid,10.0,477.0,1.0,10,10
+mineralA,矿化露头(阶段A),10,hill_climb,10.0,48.8,1.0,10,10

@@ -1,0 +1,8 @@
+evidence,unit,metric,n,mean,sd,min,p25,median,p75,max,ci95
+E1_rng_determinism,chl_compare_8seeds,points+queries,8,1.0,0,0,0,1.0,0,0,match_rate
+E2_MC_400runs,20w×20s,points,400,29.795,16.101,0.0,20.75,40.0,40.0,40.0,0.00-40.00
+E2_MC_world_mean,20worlds,points,20,29.795,16.485,0.0,22.88,40.0,40.0,40.0,0.00-40.00
+E2b_species_clouded_leopard,20seeds,points,20,7.65,3.1,5.0,5.0,6.5,9.25,14.0,5.00-13.52
+E2b_species_black_muntjac,20seeds,points,20,14.25,3.16,10.0,12.0,13.5,16.0,20.0,10.47-20.00
+E3_tv_moving_plume,10seeds,points,10,20.0,0.0,20.0,20.0,20.0,20.0,20.0,20.00-20.00
+E3_tv_abrupt_jump,10seeds,points,10,18.9,1.853,15.0,17.75,20.0,20.0,20.0,15.45-20.00

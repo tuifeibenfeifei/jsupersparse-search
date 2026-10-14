@@ -1,0 +1,12 @@
+config,mean_points,mean_queries,mean_covered,dual_cluster_rate%,full_target_rate%
+A0_skeleton,18.85,12336.0,3472.0,100.0,65.0
+A1_full_guide,13.65,18644.0,2252.0,50.0,15.0
+A2_sparse_v2base,14.4,17751.0,2360.0,55.0,25.0
+A3_sparse_cold150,14.4,17751.0,2360.0,55.0,25.0
+A4_sparse_directed,16.15,16968.0,2432.0,70.0,30.0
+A5_sparse_nocuriosity,14.5,17094.0,2516.0,60.0,30.0
+A6_sparse_topk4,16.2,16466.0,2309.0,75.0,30.0
+A7_sparse_bins4,16.7,16355.0,2353.0,80.0,35.0
+A8_sparse_bins16,17.4,14339.0,2255.0,80.0,60.0
+A9_sparse_cluster,14.35,17503.0,2332.0,55.0,25.0
+A10_sparse_cluster_directed,16.65,15297.0,2270.0,65.0,60.0

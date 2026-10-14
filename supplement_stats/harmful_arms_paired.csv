@@ -1,0 +1,13 @@
+arm,scene,metric,n,mean_a,mean_b,diff,wilcox_p,cliff_delta,claim
+H1_density_guidance,clouded_leopard,points,20,14.0,14.4,0.4,0.118,-0.1025,harmful: disabling improves hits
+H1_density_guidance,clouded_leopard,queries,20,20000.0,19718.35,-281.65,0.1587,0.05,queries: off 更省查询为有害方向
+H2_multicluster,chlorophyll,points,20,20.0,20.0,0.0,nan,0.0,harmful if off pts >= full（关闭不损失命中）
+H2_multicluster,chlorophyll,queries,20,1596.25,958.45,-637.8,0.0,0.655,harmful: full 显著更耗查询
+H3_multicluster_vs_O3D6,o3d,points,20,40.0,40.0,0.0,nan,0.0,harmful if O3D5(off) pts >= cluster arm
+H3_multicluster_vs_O3D6,o3d,queries,20,3966.75,4707.3,740.55,0.0,-0.2,harmful if cluster arm 更耗查询
+H3_multicluster_vs_O3D7,o3d,points,20,40.0,40.0,0.0,nan,0.0,harmful if O3D5(off) pts >= cluster arm
+H3_multicluster_vs_O3D7,o3d,queries,20,3966.75,4744.95,778.2,0.0,-0.2,harmful if cluster arm 更耗查询
+H4_framework_vs_greedy,chlorophyll,points,20,20.0,20.0,0.0,nan,0.0,harmful if baseline pts >= framework
+H4_framework_vs_greedy,chlorophyll,queries,20,66.0,1596.25,1530.25,0.0,-1.0,harmful: framework 显著更耗查询
+H4_framework_vs_hill_climb,chlorophyll,points,20,20.0,20.0,0.0,nan,0.0,harmful if baseline pts >= framework
+H4_framework_vs_hill_climb,chlorophyll,queries,20,67.0,1596.25,1529.25,0.0,-1.0,harmful: framework 显著更耗查询

@@ -1,0 +1,3 @@
+algo,avg_points_found,avg_total_queries,avg_cov_area_cells,cross_cluster_rate
+params2,11.65,20000.0,9925.6,0.8
+params19,9.35,20000.0,8449.4,0.65

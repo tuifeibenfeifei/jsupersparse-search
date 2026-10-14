@@ -1,0 +1,50 @@
+# ==============================================================================
+# 文件: reward_no_curiosity.yaml
+# 描述: Stage3 奖励塑形层消融 —— 关闭「未探索地区奖励（好奇心）」
+# 说明: 验证好奇心奖励(+3×权重)是否为必要信号。其余锁定为前两阶段最优。
+#
+# ⚠️ 继承占位：chunk_finder / deep_sea_distance_threshold 应在 Stage2 跑完后
+#   替换为 Stage2 最优结果。本文件唯一消融变量是 curiosity_reward_enabled=false。
+# ==============================================================================
+
+# --- 感知层（继承 Stage1 最优，锁定）---
+temperature_enabled: true
+temperature_in_state: false
+temperature_guidance_enabled: true
+temperature_guidance_weight: 3.0
+temperature_guidance_min_samples: 20
+temperature_bins: 10
+temperature_precision: 2
+spatial_granularity: 32
+micro_strategy: "center_point"
+
+# --- 移动层（继承 Stage2 最优：全量 20x20 对比胜出 = adaptive_scan，2026-09-22）---
+chunk_finder: "adaptive_scan"
+deep_sea_distance_threshold: 416
+
+# --- 奖励开关（本文件消融变量：关闭好奇心奖励）---
+deep_sea_reward_enabled: true
+curiosity_reward_enabled: false     # ← 关闭项
+penalty_reward_enabled: true
+deep_sea_reward_value: 10.0
+curiosity_reward_value: 3.0         # 数值保留但因开关关闭而不生效
+curiosity_weight: 1.0
+out_of_bounds_penalty: -10.0
+repeat_visit_penalty: -5.0
+
+# --- RL超参数（显式锁定）---
+learning_rate: 0.1
+discount_factor: 0.95
+epsilon_start: 1.0
+epsilon_end: 0.05
+epsilon_decay: 0.995
+replay_buffer_size: 8192
+
+# --- 阶段切换阈值（显式锁定）---
+stage2_min_deep_sea_points: 5
+stage3_min_deep_sea_points: 10
+
+# --- 全局限制 ---
+max_queries_per_episode: 10000
+target_deep_sea_points: 40
+search_radius: 10000

@@ -1,0 +1,74 @@
+# ==============================================================================
+# 文件: query_target_sweep.yaml
+# 描述: Stage4 超参数微调层 —— 查询预算 / 目标数量循环扫描
+# 说明: 锁定前三阶段最优结构，扫描不同查询预算，用于绘制收敛曲线，
+#       证明在该预算下样本效率优于基线算法（需求第十三节学术依据）。
+#
+# 需求第十节专项要求：本配置运行时【必须】输出标准的
+#   「查询次数 - 累计发现点数」CSV 数据，用于绘制收敛曲线图。
+#   由 run_ablation_stage4.py 从 run_experiment 返回的 convergence_data 提取，
+#   导出 stage4_convergence.csv 与 stage4_convergence_curves.png。
+#
+# ⚠️ 继承占位（需求第八节）：chunk_finder / deep_sea_distance_threshold / 奖励开关
+#   应在前三阶段跑完后替换为其最优结果。本文件唯一消融变量是查询预算与目标点数。
+#
+# ⚠️ 含 query_budget_list（预算）与 target_list（目标点数），二者按索引配对扫描。
+# ==============================================================================
+
+# --- 核心消融变量：查询预算扫描列表 ---
+# 学术依据（需求第十三节）：6500 代表中等计算预算；此处围绕其上下扩展以绘制收敛曲线，
+# 观察样本效率随预算的增长拐点，确定性价比最优的预算档位。
+query_budget_list:
+  - 2000
+  - 4000
+  - 6500
+  - 10000
+
+# --- 配对的目标深海点数（与 query_budget_list 等长，按索引配对）---
+# 需求第十三节：40 个目标点迫使算法展现长距离宏观转移能力，避免陷入局部最优。
+# 各预算档统一以 40 为目标，使收敛曲线在同一目标下可比。
+target_list:
+  - 40
+  - 40
+  - 40
+  - 40
+
+# --- 感知层（继承 Stage1 最优，锁定）---
+temperature_enabled: true
+temperature_in_state: false
+temperature_guidance_enabled: true
+temperature_guidance_weight: 3.0
+temperature_guidance_min_samples: 20
+temperature_bins: 10
+temperature_precision: 2
+spatial_granularity: 32
+micro_strategy: "center_point"
+
+# --- 移动层（继承 Stage2 最优：全量 20x20 对比胜出 = adaptive_scan，2026-09-22）---
+chunk_finder: "adaptive_scan"
+deep_sea_distance_threshold: 416
+
+# --- 奖励开关（继承 Stage3 最优，跑完 Stage3 后替换）---
+deep_sea_reward_enabled: true
+curiosity_reward_enabled: true
+penalty_reward_enabled: true
+deep_sea_reward_value: 10.0
+curiosity_reward_value: 3.0
+curiosity_weight: 1.0
+out_of_bounds_penalty: -10.0
+repeat_visit_penalty: -5.0
+
+# --- RL超参数（显式锁定）---
+learning_rate: 0.1
+discount_factor: 0.95
+epsilon_start: 1.0
+epsilon_end: 0.05
+epsilon_decay: 0.995
+replay_buffer_size: 8192
+
+# --- 阶段切换阈值（显式锁定）---
+stage2_min_deep_sea_points: 5
+stage3_min_deep_sea_points: 10
+
+# --- 全局限制（max_queries/target 由上面两个列表在运行时逐项注入）---
+search_radius: 10000

@@ -1,0 +1,4 @@
+metric,mean,std,min,max
+points_found,3.33,4.71,0,10
+total_queries,600.0,0.0,600,600
+covered_cells,538.7,86.7,416,600

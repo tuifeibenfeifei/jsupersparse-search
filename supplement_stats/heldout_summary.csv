@@ -1,0 +1,7 @@
+block,scene,comparison,metric,n,mean_a,mean_b,wilcox_p,cliff_delta
+heldout,clouded_leopard,full_vs_AUC_off,points,20,13.35,15.3,0.0054,-0.4325
+tuned,clouded_leopard,tuned_full_vs_AUC_off,points,20,14.0,14.4,0.118,-0.1025
+heldout,chlorophyll,full_vs_multicluster_off,queries,20,1706.25,1045.45,0.0,0.72
+tuned,chlorophyll,tuned_full_vs_multicluster_off,queries,20,1596.25,958.45,0.0,0.655
+heldout,chlorophyll,full_vs_greedy,queries,20,66.0,1706.25,0.0,-1.0
+heldout,chlorophyll,full_vs_hill_climb,queries,20,67.0,1706.25,0.0,-1.0

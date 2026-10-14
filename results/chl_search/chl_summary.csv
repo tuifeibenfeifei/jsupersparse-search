@@ -1,0 +1,9 @@
+config,mean_points,mean_queries,mean_covered,full_target_rate%
+CHL0_skeleton,10.5,2948.0,2701.0,45.0
+CHL1_full19,11.3,2727.0,2580.0,55.0
+CHL2_sparse,11.3,2729.0,2584.0,55.0
+CHL3_params2,11.3,2691.0,2582.0,55.0
+CHL4_params5,11.3,2705.0,2574.0,55.0
+CHL5_params7,11.3,2731.0,2584.0,55.0
+CHL6_cluster,11.3,2724.0,2582.0,55.0
+CHL7_adaptive,11.3,2766.0,2592.0,55.0

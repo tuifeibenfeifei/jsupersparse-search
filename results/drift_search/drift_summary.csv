@@ -1,0 +1,10 @@
+metric,mean,seed101,seed102,seed103
+A_points(/6),4.0,0,6,6
+A_queries,335.7,400,211,396
+decode_centroid_err_km,8.21,nan,7.24,9.19
+B_points(/3),1.0,0,0,3
+B_queries,282.3,300,300,247
+B_final_hit,1,0,0,1
+B_to_P0_km,3.33,,,3.33
+auc_dist_centroid,0.663,0.5,0.5,0.988
+B_selected_dist_cov,0,0,0,0

@@ -1,0 +1,4 @@
+seed,points_found,total_queries,covered_cells,final_stage
+101,0,600,600,1
+102,10,600,416,3
+103,0,600,600,1

@@ -1,0 +1,4 @@
+method,mean_points,mean_queries,hit_rate,min_points,max_points
+random,29.38,4052.5,0.65,0,40
+grid,13.68,95.9,0.2,0,40
+hill_climb,21.39,6670.2,0.4,0,40

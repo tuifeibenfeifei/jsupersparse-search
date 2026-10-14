@@ -1,0 +1,7 @@
+metric,v3_value
+mean_points,15.7
+mean_queries,17577.0
+mean_covered,2402.0
+mean_covered_ratio,0.2503
+dual_cluster_rate,65.0
+success_runs,6

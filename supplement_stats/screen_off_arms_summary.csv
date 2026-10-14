@@ -1,0 +1,9 @@
+scene,comparison,metric,n,mean_a,mean_b,diff,p_a_gt_b,p_a_lt_b,cliff_delta
+chlorophyll,full_vs_screen_off,queries,20,1596.25,1616.95,20.7,0.6245,0.3755,-0.075
+chlorophyll,full_vs_screen_off,points,20,20.0,20.0,0.0,nan,nan,0.0
+chlorophyll,full_vs_guidance_off,queries,0,nan,nan,nan,nan,nan,nan
+chlorophyll,full_vs_multicluster_off,queries,20,1596.25,958.45,-637.8,0.0,1.0,0.655
+clouded_leopard,full_vs_screen_off,points,20,14.0,12.8,-1.2,0.0064,0.9936,0.2325
+clouded_leopard,full_vs_screen_off,queries,20,20000.0,20000.0,0.0,nan,nan,0.0
+clouded_leopard,full_vs_guidance_off,points,0,nan,nan,nan,nan,nan,nan
+clouded_leopard,full_vs_multicluster_off,points,20,14.0,12.15,-1.85,0.0111,0.9889,0.3725

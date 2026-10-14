@@ -1,0 +1,66 @@
+# ==============================================================================
+# 文件: final_model.yaml
+# 描述: 最终版模型配置（L5 最终验证层 / 需求第八节 Stage5）
+# 说明: 由各阶段最优结果组合而成：
+#   · Stage1 最优感知: micro_strategy=center_point + 温度不进Q状态仅做导向偏向
+#   · Stage2 对比胜出: chunk_finder=adaptive_scan（全量 20×20 对比，2026-09-22，
+#     平均深海点 34.97 vs grid_scan 34.83，成功率 87.4% vs 87.1%；adaptive_scan
+#     已修复扫描周期死循环缺陷，现为 5 种宏观策略中实测最优）
+#   · Stage3 基线:     全部奖励开启（深海+10 / 好奇心+3×1.0 权重不变 / 惩罚-10、-5）
+#   · 全局限制:        40 个深海点 + 10000 次查询上限（用户指定，不再由 Stage4 决定）
+# ==============================================================================
+
+# --- 实验元信息 ---
+experiment_name: "final_model"
+output_mode: "simple"
+
+# --- 温度感知（Stage1 最优：总开关 ON + 不进Q状态 + 导向偏向 ON）---
+temperature_enabled: true
+temperature_in_state: false
+temperature_bins: 10
+temperature_precision: 2
+spatial_granularity: 32
+temperature_guidance_enabled: true
+temperature_guidance_weight: 3.0
+temperature_guidance_min_samples: 20
+
+# --- 感知层（微观选点）---
+micro_strategy: "center_point"
+
+# --- 移动层（宏观遍历，Stage2 全量 20×20 对比胜出：adaptive_scan）---
+chunk_finder: "adaptive_scan"
+deep_sea_distance_threshold: 416
+
+# --- 奖励层（Stage3 基线：全部开启，好奇心数值保持不变）---
+deep_sea_reward_enabled: true
+deep_sea_reward_value: 10.0
+curiosity_reward_enabled: true
+curiosity_reward_value: 3.0
+curiosity_weight: 1.0
+penalty_reward_enabled: true
+out_of_bounds_penalty: -10.0
+repeat_visit_penalty: -5.0
+
+# --- 强化学习超参（与各阶段基准值一致）---
+learning_rate: 0.1
+discount_factor: 0.95
+epsilon_start: 1.0
+epsilon_end: 0.05
+epsilon_decay: 0.995
+replay_buffer_size: 8192
+replay_batch_size: 16
+replay_frequency: 5
+
+# --- 阶段门限（多阶段学习机制）---
+stage2_min_deep_sea_points: 5
+stage3_min_deep_sea_points: 10
+
+# --- 全局目标限制（调整难度：40 点 + 8000 查询上限）---
+max_queries_per_episode: 8000
+target_deep_sea_points: 40
+search_radius: 10000
+
+# --- 动作空间 ---
+action_directions: 8
+action_steps: [1, 2, 4, 8]
+direction_memory_bonus: 0.0

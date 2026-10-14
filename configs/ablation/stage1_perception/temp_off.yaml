@@ -1,0 +1,52 @@
+# ==============================================================================
+# 文件: temp_off.yaml
+# 描述: Stage1 感知层消融：关闭温度特征（纯盲搜对照组）
+# 说明: 验证温度作为黑盒触觉特征的必要性（预期成功率降低约20%）
+#       所有变量（含RL超参）显式锁定为 Stage1 基准值
+# ==============================================================================
+
+# --- 核心消融变量 ---
+temperature_enabled: false
+temperature_bins: 10          # 即使关闭温度感知，也锁定分箱数保持配置结构一致
+temperature_precision: 2      # 同上，锁定量化精度；关闭温度时该参数不生效
+# 与 temp_on.yaml 锁定为同一值：本组唯一变量是 temperature_enabled，
+# 状态粒度必须两组一致，否则差异无法归因于温度开关（控制变量原则）。
+spatial_granularity: 32
+
+# --- 温度导向搜索（对照组）---
+# 温度感知关闭时，偏向依赖的温度概率表无数据，功能自动失效；此处显式关闭保持结构一致。
+temperature_guidance_enabled: false
+temperature_guidance_weight: 3.0        # 与 temp_on 锁定同值，关闭时不生效
+temperature_guidance_min_samples: 20    # 同上
+
+# --- 策略配置 ---
+micro_strategy: "corners_and_center"
+chunk_finder: "ray_scan"
+
+# --- 距离与奖励配置 ---
+deep_sea_distance_threshold: 416
+deep_sea_reward_enabled: true
+curiosity_reward_enabled: true
+penalty_reward_enabled: true
+deep_sea_reward_value: 10.0
+curiosity_reward_value: 3.0
+curiosity_weight: 1.0
+out_of_bounds_penalty: -10.0
+repeat_visit_penalty: -5.0
+
+# --- RL超参数（显式锁定，防止默认值漂移） ---
+learning_rate: 0.1
+discount_factor: 0.95
+epsilon_start: 1.0
+epsilon_end: 0.05
+epsilon_decay: 0.995
+replay_buffer_size: 8192
+
+# --- 阶段切换阈值（显式锁定） ---
+stage2_min_deep_sea_points: 5
+stage3_min_deep_sea_points: 10
+
+# --- 全局限制 ---
+max_queries_per_episode: 10000
+target_deep_sea_points: 40
+search_radius: 10000

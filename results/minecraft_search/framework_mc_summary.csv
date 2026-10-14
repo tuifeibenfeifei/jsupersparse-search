@@ -1,0 +1,2 @@
+method,mean_points,mean_queries,hit_rate,min_points,max_points,n_runs
+framework_v5,29.8,3904.9,0.65,0,40,400

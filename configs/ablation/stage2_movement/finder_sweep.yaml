@@ -1,0 +1,64 @@
+# ==============================================================================
+# 文件: finder_sweep.yaml
+# 描述: Stage2 宏观移动层消融 —— 宏观遍历策略循环扫描
+# 说明: 锁定 Stage1 最优感知配置，仅测试【宏观遍历策略】。
+#
+# 继承 Stage1 最优（需求第八节：阶段性基准值继承机制）：
+#   · 微观选点 = center_point（Stage1 实测最优 32.84，且查询开销最小）
+#   · 温度架构 = 总开关 ON + 不进Q状态 + 导向偏向 ON（实测：进状态有害、做偏向有益）
+#
+# ⚠️ 含 chunk_finder_list 列表，不可直接传入 DeepSeaExplorer，
+#    由 run_ablation_stage2.py 遍历列表动态生成单策略配置执行。
+# ==============================================================================
+
+# --- 核心消融变量：待扫描的宏观遍历策略列表 ---
+# ray_scan/spiral_scan/adaptive_scan = 需求第九节原有3种
+# grid_scan  = 间距网格扫描（网格间距=阈值，消除排斥浪费，实测瓶颈解法）
+# anchor_scan= 锚点重定位扫描（发现深海点后从该点向外扩散，实现需求第一节第4条）
+chunk_finder_list:
+  - "ray_scan"
+  - "spiral_scan"
+  - "adaptive_scan"
+  - "grid_scan"
+  - "anchor_scan"
+
+# --- 感知层（继承 Stage1 最优，全部锁定）---
+temperature_enabled: true
+temperature_in_state: false     # 温度不进 Q 状态（实测进状态会稀释学习）
+temperature_guidance_enabled: true   # 温度仅做 Stage3 宏观导向偏向（实测 +0.79）
+temperature_guidance_weight: 3.0
+temperature_guidance_min_samples: 20
+temperature_bins: 10
+temperature_precision: 2
+spatial_granularity: 32
+micro_strategy: "center_point"  # Stage1 最优微观策略
+
+# --- 移动层（本文件除 chunk_finder 外的锁定项）---
+deep_sea_distance_threshold: 416
+
+# --- 奖励配置（继承基准，全部开启）---
+deep_sea_reward_enabled: true
+curiosity_reward_enabled: true
+penalty_reward_enabled: true
+deep_sea_reward_value: 10.0
+curiosity_reward_value: 3.0
+curiosity_weight: 1.0
+out_of_bounds_penalty: -10.0
+repeat_visit_penalty: -5.0
+
+# --- RL超参数（显式锁定，防止默认值漂移）---
+learning_rate: 0.1
+discount_factor: 0.95
+epsilon_start: 1.0
+epsilon_end: 0.05
+epsilon_decay: 0.995
+replay_buffer_size: 8192
+
+# --- 阶段切换阈值（显式锁定）---
+stage2_min_deep_sea_points: 5
+stage3_min_deep_sea_points: 10
+
+# --- 全局限制 ---
+max_queries_per_episode: 10000
+target_deep_sea_points: 40
+search_radius: 10000
