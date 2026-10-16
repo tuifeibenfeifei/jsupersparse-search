@@ -1,6 +1,6 @@
 # jsupersparse-search
 
-Source code for **"Density-Binned Online Covariate Selection for Black-Box Search of Sparse Targets"** (IEEE Access, under review).
+Source code for **"Density-Binned Online Covariate Selection for Black-Box Search of Sparse Targets: Mechanism Transferability and Its Limitations"** (PeerJ Computer Science, under review).
 
 A model-free, multistage black-box online search framework that finds sparse targets over spatial grids under a fixed query budget:
 
@@ -8,7 +8,7 @@ A model-free, multistage black-box online search framework that finds sparse tar
 - **Stage 2** – variance-prefiltered, budgeted AUC screening that selects the informative covariates online;
 - **Stage 3** – tabular Q-learning over coarse block coordinates with directed far jumps, reward signals, and curiosity exploration.
 
-The framework is evaluated on **eight scenarios**: Minecraft terrain, Tufted deer (Muntiacus crinifrons), Clouded leopard (Neofelis nebulosa), chlorophyll fields, 3D oxygen-poor nuclei, slow drift, mutation, and maritime search-and-rescue.
+The framework separates **covariate selection** (which covariates to trust) from **query scheduling** (where to query next) and measures how far each transfers across scenes. The paper reports seventeen mechanism-by-scene measurements: seven beneficial, five inert, and five harmful — covariate selection transfers across domains, query scheduling does not. The framework is evaluated on **eight scenarios**: Minecraft terrain, Tufted deer (Muntiacus crinifrons), Clouded leopard (Neofelis nebulosa), chlorophyll fields, 3D oxygen-poor nuclei, slow drift, mutation, and maritime search-and-rescue.
 
 ## Repository structure
 
@@ -23,7 +23,7 @@ ocean3d-search/      3D oxygen-nucleus oracle (EMODnet) and experiments
 drift-search/        Slow-drift and mutation oracles and experiments
 maritime-search/     Maritime search-and-rescue oracle and experiments
 results/             Per-seed and summary CSV outputs behind the paper's tables and figures
-supplement_stats/    Paired tests, sensitivity sweeps, permutation controls, seed-stability and metric-robustness analyses
+supplement_stats/    Paired tests, sensitivity sweeps, permutation controls, seed-stability and metric-robustness analyses, plus the PeerJ revision experiments (PEERJ_SUPPLEMENT.md, peerj_*.py/csv)
 ```
 
 ## Requirements
@@ -56,6 +56,7 @@ Run each experiment from the repository root:
 - **Ablations** – `scripts/run_ablation_stage1.py` … `run_ablation_stage4.py`, `scripts/run_stages_parallel.py`
 - **Final configuration** – `scripts/run_final_model.py`
 - **Supplement statistics** – `supplement_stats/*.py` (paired tests, mutation sweep, permutation control, seed stability, metric robustness, held-out analysis)
+- **PeerJ revision experiments** – `supplement_stats/peerj_*.py` and `supplement_stats/PEERJ_SUPPLEMENT.md` (unified statistics with Wilson CIs, one-at-a-time mechanism × scene ablation, selector × scheduler 2×2 decomposition, wall-clock vs GP-UCB / TuRBO, n_bins sensitivity, selection-purity growth)
 - **Figures** – `scripts/generate_fig1.py`, `scripts/generate_fig8.py`, `scripts/generate_graphical_abstract.py`, plus the per-scenario `make_*_plot.py` scripts
 
 Result CSVs are written under `results/` and `supplement_stats/`, matching the tables and figures in the paper.
@@ -66,4 +67,4 @@ MIT — see [LICENSE](LICENSE).
 
 ## Citation
 
-TBD once the article is accepted (IEEE Access, 2026).
+TBD once the article is accepted (PeerJ Computer Science, 2026).

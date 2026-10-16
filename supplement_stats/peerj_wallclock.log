@@ -1,0 +1,181 @@
+[15:10:21] === PeerJ 端到端墙钟成本对照 ===
+[15:10:21] [1/4] chlorophyll 三方法实测 20 seeds ...
+[15:10:23]   chl/framework seed=101 pts=20 q=1301 wall=1.662s
+[15:10:25]   chl/framework seed=102 pts=20 q=1292 wall=1.639s
+[15:10:27]   chl/framework seed=103 pts=20 q=1602 wall=2.189s
+[15:10:28]   chl/framework seed=104 pts=20 q=1159 wall=1.526s
+[15:10:30]   chl/framework seed=105 pts=20 q=982 wall=1.140s
+[15:10:32]   chl/framework seed=106 pts=20 q=2603 wall=2.422s
+[15:10:34]   chl/framework seed=107 pts=20 q=1413 wall=2.213s
+[15:10:36]   chl/framework seed=108 pts=20 q=1308 wall=1.832s
+[15:10:38]   chl/framework seed=109 pts=20 q=2117 wall=2.161s
+[15:10:39]   chl/framework seed=110 pts=20 q=1085 wall=0.652s
+[15:10:41]   chl/framework seed=111 pts=20 q=2217 wall=2.303s
+[15:10:43]   chl/framework seed=112 pts=20 q=1412 wall=2.174s
+[15:10:45]   chl/framework seed=113 pts=20 q=1368 wall=2.046s
+[15:10:48]   chl/framework seed=114 pts=20 q=1565 wall=2.183s
+[15:10:50]   chl/framework seed=115 pts=20 q=1949 wall=2.093s
+[15:10:52]   chl/framework seed=116 pts=20 q=1280 wall=1.802s
+[15:10:53]   chl/framework seed=117 pts=20 q=2167 wall=1.953s
+[15:10:55]   chl/framework seed=118 pts=20 q=1390 wall=1.855s
+[15:10:57]   chl/framework seed=119 pts=20 q=1878 wall=1.658s
+[15:10:59]   chl/framework seed=120 pts=20 q=2017 wall=1.765s
+[15:11:01]   chl/gp_ucb seed=101 pts=20 q=60 wall=2.422s
+[15:11:01]   chl/gp_ucb seed=102 pts=20 q=110 wall=0.054s
+[15:11:01]   chl/gp_ucb seed=103 pts=20 q=97 wall=0.075s
+[15:11:01]   chl/gp_ucb seed=104 pts=20 q=73 wall=0.056s
+[15:11:01]   chl/gp_ucb seed=105 pts=20 q=114 wall=0.070s
+[15:11:01]   chl/gp_ucb seed=106 pts=20 q=95 wall=0.062s
+[15:11:02]   chl/gp_ucb seed=107 pts=20 q=79 wall=0.053s
+[15:11:02]   chl/gp_ucb seed=108 pts=20 q=96 wall=0.058s
+[15:11:02]   chl/gp_ucb seed=109 pts=20 q=76 wall=0.063s
+[15:11:02]   chl/gp_ucb seed=110 pts=20 q=102 wall=0.068s
+[15:11:02]   chl/gp_ucb seed=111 pts=20 q=133 wall=0.163s
+[15:11:02]   chl/gp_ucb seed=112 pts=20 q=99 wall=0.071s
+[15:11:02]   chl/gp_ucb seed=113 pts=20 q=74 wall=0.053s
+[15:11:02]   chl/gp_ucb seed=114 pts=20 q=98 wall=0.064s
+[15:11:02]   chl/gp_ucb seed=115 pts=20 q=58 wall=0.028s
+[15:11:02]   chl/gp_ucb seed=116 pts=20 q=81 wall=0.057s
+[15:11:02]   chl/gp_ucb seed=117 pts=20 q=116 wall=0.083s
+[15:11:02]   chl/gp_ucb seed=118 pts=20 q=117 wall=0.081s
+[15:11:02]   chl/gp_ucb seed=119 pts=20 q=96 wall=0.064s
+[15:11:02]   chl/gp_ucb seed=120 pts=20 q=97 wall=0.058s
+[15:11:05]   chl/turbo seed=101 pts=20 q=269 wall=2.104s
+[15:11:05]   chl/turbo seed=102 pts=20 q=102 wall=0.114s
+[15:11:08]   chl/turbo seed=103 pts=20 q=311 wall=3.037s
+[15:11:14]   chl/turbo seed=104 pts=20 q=495 wall=6.757s
+[15:11:15]   chl/turbo seed=105 pts=20 q=86 wall=0.148s
+[15:11:17]   chl/turbo seed=106 pts=20 q=278 wall=2.617s
+[15:11:18]   chl/turbo seed=107 pts=20 q=175 wall=0.664s
+[15:11:24]   chl/turbo seed=108 pts=20 q=469 wall=5.653s
+[15:11:25]   chl/turbo seed=109 pts=20 q=208 wall=1.357s
+[15:11:28]   chl/turbo seed=110 pts=20 q=278 wall=3.062s
+[15:11:37]   chl/turbo seed=111 pts=20 q=557 wall=8.858s
+[15:11:41]   chl/turbo seed=112 pts=20 q=329 wall=4.304s
+[15:11:44]   chl/turbo seed=113 pts=20 q=277 wall=2.591s
+[15:11:44]   chl/turbo seed=114 pts=20 q=149 wall=0.262s
+[15:11:47]   chl/turbo seed=115 pts=20 q=285 wall=2.798s
+[15:11:57]   chl/turbo seed=116 pts=20 q=597 wall=9.987s
+[15:12:01]   chl/turbo seed=117 pts=20 q=334 wall=4.175s
+[15:12:01]   chl/turbo seed=118 pts=20 q=95 wall=0.127s
+[15:12:02]   chl/turbo seed=119 pts=20 q=170 wall=0.695s
+[15:12:22]   chl/turbo seed=120 pts=20 q=1125 wall=20.657s
+[15:12:22] [2/4] minecraft framework 读既有 CSV ...
+[15:12:22]   mc/framework 读既有 CSV 400 runs
+[15:12:22] [3/4] minecraft GP-UCB/TuRBO 实测 10 worlds x 20 seeds ...
+[15:13:12]   mc agents world_seed=1 done (+40 rows)
+[15:13:45]   mc agents world_seed=2 done (+40 rows)
+[15:22:07]   mc agents world_seed=3 done (+40 rows)
+[15:22:10]   mc agents world_seed=4 done (+40 rows)
+[15:22:14]   mc agents world_seed=5 done (+40 rows)
+[15:25:03]   mc agents world_seed=6 done (+40 rows)
+[15:26:16] [resume] 已完成 MC agent worlds: [1, 2, 3, 4, 5, 6]
+[15:27:01]     [watchdog gp_ucb] q=2673
+[15:27:47]     [watchdog turbo] q=1029
+[15:28:32]     [watchdog gp_ucb] q=4373
+[15:29:17]     [watchdog turbo] q=2213
+[15:30:02]     [watchdog gp_ucb] q=2073
+[15:30:48]     [watchdog turbo] q=941
+[15:31:33]     [watchdog gp_ucb] q=2913
+[15:32:18]     [watchdog turbo] q=1069
+[15:33:03]     [watchdog gp_ucb] q=4973
+[15:33:48]     [watchdog turbo] q=2741
+[15:34:33]     [watchdog gp_ucb] q=4553
+[15:35:18]     [watchdog turbo] q=2653
+[15:36:04]     [watchdog gp_ucb] q=4933
+[15:36:55] [resume] 已完成 MC agent worlds: [1, 2, 3, 4, 5, 6]
+[15:37:15]     [watchdog gp_ucb] q=2193
+[15:37:35]     [watchdog turbo] q=1453
+[15:37:55]     [watchdog gp_ucb] q=2813
+[15:38:15]     [watchdog turbo] q=1589
+[15:38:35]     [watchdog gp_ucb] q=2873
+[15:38:55]     [watchdog turbo] q=1405
+[15:39:15]     [watchdog gp_ucb] q=2633
+[15:39:35]     [watchdog turbo] q=1325
+[15:39:55]     [watchdog gp_ucb] q=2513
+[15:40:15]     [watchdog turbo] q=1229
+[15:40:36]     [watchdog gp_ucb] q=2393
+[15:40:56]     [watchdog turbo] q=1421
+[15:41:16]     [watchdog gp_ucb] q=1033
+[15:41:36]     [watchdog turbo] q=597
+[15:41:57]     [watchdog gp_ucb] q=873
+[15:42:17]     [watchdog turbo] q=757
+[15:42:37]     [watchdog gp_ucb] q=913
+[15:42:57]     [watchdog turbo] q=589
+[15:43:18]     [watchdog gp_ucb] q=993
+[15:43:38]     [watchdog turbo] q=613
+[15:43:59]     [watchdog gp_ucb] q=933
+[15:44:19]     [watchdog turbo] q=605
+[15:44:39]     [watchdog gp_ucb] q=973
+[15:44:59]     [watchdog turbo] q=989
+[15:45:19]     [watchdog gp_ucb] q=2573
+[15:45:39]     [watchdog turbo] q=709
+[15:46:00]     [watchdog gp_ucb] q=873
+[15:46:20]     [watchdog turbo] q=1269
+[15:46:40]     [watchdog gp_ucb] q=1893
+[15:47:01]     [watchdog turbo] q=517
+[15:47:21]     [watchdog gp_ucb] q=773
+[15:47:41]     [watchdog turbo] q=501
+[15:48:01]     [watchdog gp_ucb] q=1413
+[15:48:21]     [watchdog turbo] q=517
+[15:48:42]     [watchdog gp_ucb] q=773
+[15:49:02]     [watchdog turbo] q=485
+[15:49:22]     [watchdog gp_ucb] q=773
+[15:49:42]     [watchdog turbo] q=493
+[15:50:02]     [watchdog gp_ucb] q=1653
+[15:50:23]     [watchdog turbo] q=573
+[15:50:23]   mc agents world_seed=7 done (+40 rows)
+[15:50:31]   mc agents world_seed=8 done (+40 rows)
+[15:50:51]     [watchdog gp_ucb] q=813
+[15:51:12]     [watchdog turbo] q=517
+[15:51:32]     [watchdog gp_ucb] q=1733
+[15:51:52]     [watchdog turbo] q=1413
+[15:52:12]     [watchdog gp_ucb] q=2673
+[15:52:32]     [watchdog turbo] q=1517
+[15:52:52]     [watchdog gp_ucb] q=2793
+[15:53:12]     [watchdog turbo] q=1589
+[15:53:33]     [watchdog gp_ucb] q=3173
+[15:53:53]     [watchdog turbo] q=1517
+[15:54:13]     [watchdog gp_ucb] q=2893
+[15:54:33]     [watchdog turbo] q=2261
+[15:54:53]     [watchdog gp_ucb] q=3193
+[15:55:13]     [watchdog turbo] q=1645
+[15:55:33]     [watchdog gp_ucb] q=3213
+[15:55:53]     [watchdog turbo] q=1877
+[15:56:13]     [watchdog gp_ucb] q=3213
+[15:56:33]     [watchdog turbo] q=1765
+[15:56:53]     [watchdog gp_ucb] q=2353
+[15:57:13]     [watchdog turbo] q=1229
+[15:57:33]     [watchdog gp_ucb] q=2133
+[15:57:54]     [watchdog turbo] q=581
+[15:58:14]     [watchdog gp_ucb] q=933
+[15:58:34]     [watchdog turbo] q=589
+[15:58:54]     [watchdog gp_ucb] q=1033
+[15:59:15]     [watchdog turbo] q=1373
+[15:59:35]     [watchdog gp_ucb] q=933
+[15:59:55]     [watchdog turbo] q=1285
+[16:00:15]     [watchdog gp_ucb] q=2733
+[16:00:35]     [watchdog turbo] q=1485
+[16:00:55]     [watchdog gp_ucb] q=2693
+[16:01:15]     [watchdog turbo] q=1461
+[16:01:35]     [watchdog gp_ucb] q=2753
+[16:01:56]     [watchdog turbo] q=1469
+[16:02:16]     [watchdog gp_ucb] q=2333
+[16:02:36]     [watchdog turbo] q=877
+[16:02:56]     [watchdog gp_ucb] q=1293
+[16:03:16]     [watchdog turbo] q=589
+[16:03:37]     [watchdog gp_ucb] q=973
+[16:03:57]     [watchdog turbo] q=685
+[16:03:57]   mc agents world_seed=9 done (+40 rows)
+[16:04:24]     [watchdog turbo] q=653
+[16:04:44]     [watchdog gp_ucb] q=773
+[16:05:05]     [watchdog turbo] q=501
+[16:09:58]     [watchdog turbo] q=869
+[16:10:19]     [watchdog gp_ucb] q=813
+[16:10:39]     [watchdog turbo] q=517
+[16:10:59]     [watchdog gp_ucb] q=793
+[16:11:38]     [watchdog gp_ucb] q=773
+[16:11:58]     [watchdog turbo] q=621
+[16:12:36]     [watchdog turbo] q=501
+[16:12:36]   mc agents world_seed=10 done (+40 rows)
+[16:12:36] [resume] 完成

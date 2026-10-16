@@ -1,0 +1,37 @@
+[2026-10-16 14:36:02] seeded 1320 old rows from ablation_detail.csv -> peerj_oat_detail.csv
+[2026-10-16 14:36:02] === OAT ablation run start ===
+[2026-10-16 14:36:02]   RUN  clouded_leopard  blank_jump_off       (have 0/20, overrides={'blank_jump': False})
+[2026-10-16 15:08:30]   DONE clouded_leopard  blank_jump_off       pts= 12.75 q= 20000.0 cov=  4462.4  (1947.6s, n=20)
+[2026-10-16 15:08:30]   RUN  clouded_leopard  directed_jump_off    (have 0/20, overrides={'directed_jump': False})
+[2026-10-16 15:33:51]   DONE clouded_leopard  directed_jump_off    pts= 12.90 q= 20000.0 cov=  4769.9  (1521.1s, n=20)
+[2026-10-16 15:33:51]   RUN  clouded_leopard  n_bins4              (have 0/20, overrides={'n_bins': 4})
+[2026-10-16 16:54:33]   DONE clouded_leopard  n_bins4              pts= 13.60 q= 20000.0 cov=  5121.0  (4842.4s, n=20)
+[2026-10-16 16:54:34]   RUN  clouded_leopard  n_bins16             (have 0/20, overrides={'n_bins': 16})
+[2026-10-16 17:16:41]   DONE clouded_leopard  n_bins16             pts= 13.25 q= 20000.0 cov=  5085.1  (1327.2s, n=20)
+[2026-10-16 17:16:41]   RUN  clouded_leopard  follow_off_verify    (have 0/2, overrides={'follow_mode': False})
+[2026-10-16 17:18:55]   DONE clouded_leopard  follow_off_verify    pts= 13.50 q= 20000.0 cov=  5137.0  (134.7s, n=2)
+[2026-10-16 17:18:55]   RUN  minecraft        follow_off           (have 0/400, overrides={'follow_mode': False})
+[2026-10-16 17:26:04]   DONE minecraft        follow_off           pts= 29.78 q=  3983.5 cov=  1781.5  (428.8s, n=400)
+[2026-10-16 17:26:04]   RUN  minecraft        blank_jump_off       (have 0/400, overrides={'blank_jump': False})
+[2026-10-16 17:30:25]   DONE minecraft        blank_jump_off       pts= 29.81 q=  3898.1 cov=  1765.4  (261.2s, n=400)
+[2026-10-16 17:30:25]   RUN  chlorophyll      follow_off           (have 0/20, overrides={'follow_mode': False})
+[2026-10-16 17:31:01]   DONE chlorophyll      follow_off           pts= 20.00 q=  1605.2 cov=  1151.3  (35.7s, n=20)
+[2026-10-16 17:31:01]   RUN  chlorophyll      blank_jump_off       (have 0/20, overrides={'blank_jump': False})
+[2026-10-16 17:31:08]   DONE chlorophyll      blank_jump_off       pts= 20.00 q=   955.4 cov=   860.8  (6.9s, n=20)
+[2026-10-16 17:31:08]   RUN  chlorophyll      directed_jump_off    (have 0/20, overrides={'directed_jump': False})
+[2026-10-16 17:31:44]   DONE chlorophyll      directed_jump_off    pts= 20.00 q=  1606.6 cov=  1151.3  (36.3s, n=20)
+[2026-10-16 17:31:44]   RUN  chlorophyll      n_bins4              (have 0/20, overrides={'n_bins': 4})
+[2026-10-16 17:32:14]   DONE chlorophyll      n_bins4              pts= 20.00 q=  1631.4 cov=  1156.3  (29.2s, n=20)
+[2026-10-16 17:32:14]   RUN  chlorophyll      n_bins16             (have 0/20, overrides={'n_bins': 16})
+[2026-10-16 17:32:57]   DONE chlorophyll      n_bins16             pts= 20.00 q=  1664.5 cov=  1170.6  (43.4s, n=20)
+[2026-10-16 17:32:57]   RUN  chlorophyll      serpentine           (have 0/20, overrides={'stage1_scan_mode': 'serpentine'})
+[2026-10-16 17:33:39]   DONE chlorophyll      serpentine           pts= 10.90 q=  2989.1 cov=  2752.9  (41.8s, n=20)
+[2026-10-16 17:33:39] === run all done, total 177.6 min ===
+[2026-10-16 17:49:54] === building matrix ===
+[2026-10-16 17:50:00] === building matrix ===
+[2026-10-16 17:50:16] === building matrix ===
+[2026-10-16 17:50:16] matrix written -> C:\Users\19264\Desktop\deep-sea-exploration\supplement_stats\peerj_oat_matrix.md
+[2026-10-16 17:50:16] === anchor check ===
+[2026-10-16 17:50:16]   anchor chlorophyll      full     q=1605.2 (expect 1596.25) pts=20.00 (expect None) n=20
+[2026-10-16 17:50:16]   anchor clouded_leopard  full     q=20000.0 (expect None) pts=14.00 (expect 14.0) n=20
+[2026-10-16 17:50:16]   anchor minecraft        full     q=3902.6 (expect 3905.0) pts=29.80 (expect 29.8) n=400

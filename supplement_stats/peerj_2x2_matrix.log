@@ -1,0 +1,44 @@
+[15:00:53] === peerj_2x2_matrix: selector(on/off) x scheduler(greedy/smart) ===
+[15:00:53] [reuse] 既有 smart 臂行数 = 940
+[15:00:53] --- [1] chlorophyll greedy arms (20 seeds) ---
+[15:00:53]     chlorophyll sel_on_greedy reused n=20 (all q=66: True)
+[15:01:01]     chlorophyll sel_off_greedy done (7.4s)
+[15:01:01] --- [2] clouded_leopard greedy arms (20 seeds) ---
+[15:01:26]     clouded_leopard sel_on_greedy    done (24.8s)
+[15:01:32]     clouded_leopard sel_off_greedy   done (6.5s)
+[15:01:32] --- [3a] minecraft on-smart 探针 (1 world x 5 seeds) ---
+[15:01:32]     MC on-smart probe: 5 runs in 0.1s = 0.01s/run
+[15:01:32]     MC on-smart full: 20 worlds x 20 seeds = 400 runs
+[15:01:32]     MC on-smart world1 remaining 15 seeds (0.1s)
+[15:01:32]     MC on-smart world=2 done (0.1s)
+[15:01:37]     MC on-smart world=3 done (5.0s)
+[15:01:37]     MC on-smart world=4 done (0.0s)
+[15:01:38]     MC on-smart world=5 done (0.0s)
+[15:01:38]     MC on-smart world=6 done (1.0s)
+[15:01:41]     MC on-smart world=7 done (2.7s)
+[15:01:41]     MC on-smart world=8 done (0.0s)
+[15:04:33]     MC on-smart world=9 done (171.3s)
+[15:04:47]     MC on-smart world=10 done (14.3s)
+[15:04:49]     MC on-smart world=11 done (1.9s)
+[15:04:51]     MC on-smart world=12 done (1.9s)
+[15:04:51]     MC on-smart world=13 done (0.0s)
+[15:04:53]     MC on-smart world=14 done (1.9s)
+[15:04:53]     MC on-smart world=15 done (0.0s)
+[15:04:53]     MC on-smart world=16 done (0.0s)
+[15:07:44]     MC on-smart world=17 done (171.7s)
+[15:07:44]     MC on-smart world=18 done (0.1s)
+[15:07:52]     MC on-smart world=19 done (7.7s)
+[15:10:07]     MC on-smart world=20 done (135.2s)
+[15:10:07] --- [3b] minecraft greedy arms ---
+[15:12:01]     MC sel_on_greedy    done n=400 (113.4s)
+[15:13:14]     MC sel_off_greedy   done n=400 (73.5s)
+[15:13:14] --- [4] ocean3d arms ---
+[15:14:17]     ocean3d sel_on_smart done (62.8s)
+[15:14:19]     ocean3d sel_on_greedy    done (1.4s)
+[15:14:20]     ocean3d sel_off_greedy   done (1.6s)
+[15:14:20] [detail] -> C:\Users\19264\Desktop\deep-sea-exploration\supplement_stats\peerj_2x2_detail.csv (2280 rows)
+[15:14:20] --- self-check anchors ---
+[15:14:20]   chlorophyll sel_on_greedy: n=20 mean=66.0 all==66? True
+[15:14:20]   chlorophyll sel_on_smart: n=20 mean_q=1596.2
+[15:14:20]   minecraft sel_off_smart: n=400 mean_pts=29.80
+[15:14:20] === all done in 13.4 min ===

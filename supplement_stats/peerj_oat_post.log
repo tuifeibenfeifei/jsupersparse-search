@@ -1,0 +1,12 @@
+[2026-10-16 17:42:42] === post repro-calibration start ===
+[2026-10-16 17:48:56]   CL spot seed 101: old(pts=15,q=20000) new(pts=15,q=20000) -> MATCH
+[2026-10-16 17:48:56]   CL spot seed 102: old(pts=12,q=20000) new(pts=12,q=20000) -> MATCH
+[2026-10-16 17:48:56]   CL spot seed 103: old(pts=12,q=20000) new(pts=12,q=20000) -> MATCH
+[2026-10-16 17:48:56]   CL spot seed 104: old(pts=15,q=20000) new(pts=15,q=20000) -> MATCH
+[2026-10-16 17:48:56]   CL spot seed 105: old(pts=18,q=20000) new(pts=18,q=20000) -> MATCH
+[2026-10-16 17:48:56]   CL spot-check: 5/5 identical
+[2026-10-16 17:48:56]   -> CL column keeps old rows (5/5 spot-checked identical).
+[2026-10-16 17:49:35]   CHL full rerun: mean pts=20.00 mean q=1605.25 (old 10-03 record q=1596.25)
+[2026-10-16 17:49:35]   wrote 2322 rows -> peerj_oat_detail.csv
+[2026-10-16 17:49:35]   CL_replaced=False  CHL_fresh_mean_q=1605.25
+[2026-10-16 17:49:35] === post done ===
