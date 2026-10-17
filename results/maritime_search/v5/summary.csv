@@ -1,0 +1,4 @@
+variant,n_seeds,points_mean,queries_mean,covered_mean,n_stage2plus,first_hit_q_list
+prior_off,10,1.0,600.0,600.0,0,"[200, -1, 200, 200, 500, 400, 500, 400, 200, 100]"
+prior_on,10,15.0,20.0,20.0,0,"[20, 20, 20, 20, 20, 20, 20, 20, 20, 20]"
+prior_on_motion,10,15.0,20.0,20.0,0,"[20, 20, 20, 20, 20, 20, 20, 20, 20, 20]"

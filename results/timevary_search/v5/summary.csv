@@ -1,0 +1,11 @@
+scene,variant,n_seeds,points_mean,points_std,reach_rate,queries_mean
+moving_plume,framework_off,10,18.0,2.1,0.5,1252.1
+moving_plume,framework_decay300,10,20.0,0.0,1.0,893.1
+moving_plume,framework_fix_motion,10,20.0,0.0,1.0,784.8
+moving_plume,framework_fix_follow,10,20.0,0.0,1.0,394.6
+moving_plume,framework_fix_follow_disperse,10,20.0,0.0,1.0,395.0
+abrupt_jump,framework_decay300,10,18.9,1.76,0.7,1373.4
+abrupt_jump,framework_fix_motion,10,19.3,1.55,0.8,1266.6
+abrupt_jump,framework_fix_disperse,10,18.3,3.41,0.8,1350.2
+abrupt_jump,framework_fix_follow,10,17.9,2.74,0.6,1186.6
+abrupt_jump,framework_fix_follow_disperse,10,19.5,1.2,0.8,1116.8
