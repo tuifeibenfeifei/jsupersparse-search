@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# --- repository root (auto-located) ---
 import os
 from pathlib import Path
 REPO_ROOT = Path(__file__).resolve()
@@ -7,17 +6,10 @@ for _ in range(8):
     if (REPO_ROOT / 'configs').is_dir():
         break
     REPO_ROOT = REPO_ROOT.parent
-# --------------------------------------
-"""metric_robustness.py — 指标稳健性重排（任务15）。
+"""指标稳健性重排：把"命中点数 points"换成"查询数 queries / 覆盖格数"作为排序指标，检查排名是否翻转。
 
-检查：把"命中点数 points"换成"查询数 queries / 覆盖格数"作为排序指标，
-方法排名是否翻转、框架的结论（负结果/有害臂）是否稳健。
-
-数据源：
-  S1 MC 深海：framework vs grid / hill_climb / random（baseline_mc_*.csv）
-  S2 跨场景消融：3 场景 × full/AUC_off/multicluster_off（ablation_detail）
-  S3 叶绿素全对比：14 方法（chl compare_detail）
-输出：supplement_stats/metric_robustness.csv + 控制台结论。
+数据源：S1 MC（baseline_mc_*.csv）、S2 跨场景消融（ablation_detail）、S3 叶绿素全对比（chl compare_detail）。
+输出 supplement_stats/metric_robustness.csv + 控制台结论。
 """
 import csv
 from pathlib import Path

@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# --- repository root (auto-located) ---
 import os
 from pathlib import Path
 REPO_ROOT = Path(__file__).resolve()
@@ -7,29 +6,9 @@ for _ in range(8):
     if (REPO_ROOT / 'configs').is_dir():
         break
     REPO_ROOT = REPO_ROOT.parent
-# --------------------------------------
-"""screen_off_arms.py — 补跑 TABLE IX 缺失中间臂（AUC 屏幕关、引导保留）。
+"""补跑 TABLE IX 缺失中间臂：sparse_guidance=False、guidance_on=True（seeds 101-120）。
 
-背景
-----
-手稿 TABLE IX（ISOLATED EFFECT OF AUC SCREENING, GUIDANCE KEPT ON；seeds 101–120, N=20）
-为三臂设计：on（full）/ off（关 AUC 屏幕、保留引导）/ guidance off entirely。
-其中中间臂 = 配置覆盖 {"sparse_guidance": False}（guidance_on 保持 True），
-现有 results 中无当前版本数据源（ablation_cross 仅含 full / AUC_off[=引导整链关] / multicluster_off）。
-本脚本用与 run_cross_ablation.py / heldout_seeds.py 完全相同的最终配置补跑该臂。
-
-输出
-----
-  supplement_stats/screen_off_arms.csv          逐 seed 明细
-  supplement_stats/screen_off_arms_summary.csv  统一配对检验（含既有三臂；单尾 Wilcoxon + Cliff's delta）
-  supplement_stats/screen_off_arms.log          日志
-
-用法
-----
-  $env:PYTHONPATH=REPO_ROOT / ".pylibs"
-  python supplement_stats/screen_off_arms.py --canary   # 自检：full 配置 1 seed，与 ablation_cross 对照
-  python supplement_stats/screen_off_arms.py --smoke 2  # 每场景 2 seed 试跑（不落盘）
-  python supplement_stats/screen_off_arms.py            # 全量补跑 + 汇总
+输出 screen_off_arms.csv（逐 seed）、screen_off_arms_summary.csv（配对检验）、screen_off_arms.log。
 """
 import argparse
 import csv
@@ -57,7 +36,7 @@ LOG = HERE / "screen_off_arms.log"
 
 SEEDS = list(range(101, 121))  # 与 TABLE IX 声明一致
 
-# ---- 与 run_cross_ablation.py / heldout_seeds.py 完全相同的配置 ----
+# 与 run_cross_ablation.py / heldout_seeds.py 完全相同的配置
 SPP_CFG = dict(
     target_points=20, max_queries=20000, min_dist_cells=1.0,
     stage2_min=3, stage3_min=5, stage3_jump_interval=30,
@@ -151,7 +130,7 @@ def main():
         LOG.unlink()
     log("=== screen-off 臂补跑（TABLE IX 中间臂：sparse_guidance=False, guidance_on=True） ===")
 
-    # ---------- canary ----------
+    # canary
     if a.canary:
         checks = [("chlorophyll", 101, 20, 1301), ("clouded_leopard", 101, 15, 20000)]
         all_ok = True
@@ -168,7 +147,7 @@ def main():
 
     seeds = SEEDS[: a.smoke] if a.smoke else SEEDS
 
-    # ---------- 1) 补跑 screen-off 臂 ----------
+    # 1) 补跑 screen-off 臂
     t0 = time.time()
     all_rows = []
     for sc in ["chlorophyll", "clouded_leopard"]:
@@ -188,7 +167,7 @@ def main():
             w.writerows(all_rows)
         log(f"[1/2] 明细 -> {DETAIL_OUT}")
 
-    # ---------- 2) 统一配对检验（screen_off 新数据 + 既有三臂） ----------
+    # 2) 统一配对检验（screen_off 新数据 + 既有三臂）
     own = {sc: {"screen_off": {}} for sc in ["chlorophyll", "clouded_leopard"]}
     for sc, v, ws, ag, p, q in all_rows:
         own[sc][v][int(ag)] = (float(p), float(q))

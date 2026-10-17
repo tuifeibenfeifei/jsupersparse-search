@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# --- repository root (auto-located) ---
 import os
 from pathlib import Path
 REPO_ROOT = Path(__file__).resolve()
@@ -7,19 +6,12 @@ for _ in range(8):
     if (REPO_ROOT / 'configs').is_dir():
         break
     REPO_ROOT = REPO_ROOT.parent
-# --------------------------------------
-"""mc_paired_audit.py — F9 复算：Minecraft 配对检验（论文 TABLE XI 前四行）。
+"""Minecraft 配对检验复算（论文 TABLE XI 前四行）。
 
-目的：论文 V-H 写 "one-sided Wilcoxon signed-rank"，但 n=20 时单侧精确
-Wilcoxon 无法产生 p=0.055（0.0487 与 0.0527 之间无可达值）。本脚本用
-results/minecraft_search/ 的逐 run 数据复算四个比较，
-并列出多种检验口径的结果，用于确定论文应澄清或改正的表述。
-
-数据：
-  framework_mc_detail.csv   20 world × 20 algo seeds（101-120）
-  baseline_mc_random.csv    20 world × 5 algo seeds
-  baseline_mc_hill_climb.csv / baseline_mc_grid.csv 同结构
-口径：world-level mean → 20 配对（与 TABLE III 表注一致）。
+n=20 时单侧精确 Wilcoxon 无法产生 p=0.055，本脚本用 results/minecraft_search/ 逐 run 数据
+复算四个比较并列多种检验口径，用于澄清或改正论文表述。
+数据：framework_mc_detail.csv（20 world × 20 algo seeds）、baseline_mc_random / hill_climb / grid（20 world × 5 seeds）。
+口径：world-level mean → 20 配对。
 """
 import csv
 from pathlib import Path

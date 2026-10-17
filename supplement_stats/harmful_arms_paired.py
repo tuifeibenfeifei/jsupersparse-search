@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# --- repository root (auto-located) ---
 import os
 from pathlib import Path
 REPO_ROOT = Path(__file__).resolve()
@@ -7,18 +6,12 @@ for _ in range(8):
     if (REPO_ROOT / 'configs').is_dir():
         break
     REPO_ROOT = REPO_ROOT.parent
-# --------------------------------------
-"""harmful_arms_paired.py — TABLE XV 四个"有害臂"的配对检验确认（任务13）。
+"""TABLE XV 四个"有害臂"的配对检验确认。
 
-四个有害臂（手稿 TABLE XV，禁用后性能改善=机制有害）：
-  H1  Covariate density guidance @ Clouded leopard  (full vs AUC_off, 20 配对)
-  H2  Multicluster adaptation        @ Chlorophyll  (full vs multicluster_off, 20 配对)
-  H3  Multicluster adaptation        @ 3-D hypoxic  (O3D5 vs O3D6 / O3D7, 20 配对)
-  H4  Full framework vs greedy/hill_climb @ Chlorophyll (补跑基线, 20 配对)
-
-统计口径（与手稿 TABLE XI 一致）：单尾 Wilcoxon 符号秩检验 + Cliff's delta。
-方向：对"有害"主张的支撑方向 = 关闭机制/简单基线在对应指标上更好。
-输出：supplement_stats/harmful_arms_paired.csv + 控制台汇总。
+H1 guidance @ Clouded leopard（full vs AUC_off）、H2 multicluster @ Chlorophyll（full vs multicluster_off）、
+H3 multicluster @ 3-D hypoxic（O3D5 vs O3D6/O3D7）、H4 framework vs greedy/hill_climb @ Chlorophyll，各 20 配对。
+统计口径与手稿 TABLE XI 一致：单尾 Wilcoxon 符号秩检验 + Cliff's delta。
+输出 supplement_stats/harmful_arms_paired.csv + 控制台汇总。
 """
 import csv
 import math
@@ -98,7 +91,7 @@ def paired_stats(tag, scene, metric, a, b, direction, claim):
     return row
 
 
-# ===================== 叶绿素基线（补跑 H4） =====================
+# 叶绿素基线（补跑 H4）
 
 class Env:
     def __init__(self, oracle):
@@ -256,7 +249,7 @@ def run_baseline(oracle, algo, seeds):
     return rows
 
 
-# ===================== 主流程 =====================
+# 主流程
 
 def main():
     if LOG.exists():

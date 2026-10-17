@@ -1,21 +1,8 @@
 # -*- coding: utf-8 -*-
-"""peerj_wallclock.py — 端到端墙钟成本对照（PeerJ 论文第五章建议第 6 条）。
+"""端到端墙钟成本对照：framework / GP-UCB / TuRBO，chlorophyll 与 minecraft 场景。
 
-同预算同硬件下：
-  场景 × 方法（framework / GP-UCB / TuRBO）
-    - chlorophyll: 1 oracle x 20 algo seeds (101..120)，三方法全部实测计时
-    - minecraft:   10 world seeds x 20 algo seeds（子集，见报告口径说明）；
-                   framework 直接读既有 results/minecraft_search/framework_mc_detail.csv
-                   （400 runs, wall_time_s 列）；GP-UCB/TuRBO 在同 npz oracle 上实测计时
-
-代理增长微基准（chlorophyll 口径）：
-  n in {100,500,1000,2000,4000}：
-    GP 单步 = 重拟合 GPR(n 样本, 9 维) + 预测 2000 候选，重复 3 次取中位数
-    框架单查询 = 1 个 CHL episode 的 wall_time / total_queries
-  产出 supplement_stats/peerj_proxy_growth.csv
-
-所有耗时用 time.perf_counter。所有数字来自实测或既有 CSV，不编造。
-增量写盘：每完成一个 world 即追加 CSV，断点不丢。
+代理增长微基准：n in {100,500,1000,2000,4000}，GP 单步重拟合 GPR + 预测 2000 候选取中位数。
+所有耗时用 time.perf_counter；数字来自实测或既有 CSV；增量写盘，断点不丢。
 """
 import csv
 import math
@@ -83,7 +70,7 @@ def write_rows(rows, mode="a"):
         w.writerows(rows)
 
 
-# ===================== CHL 实测 =====================
+# CHL 实测
 
 def run_chl():
     rows = []
@@ -125,7 +112,7 @@ def run_chl():
     return rows
 
 
-# ===================== MC =====================
+# MC
 
 class MCSimpleCtx:
     def __init__(self, oracle: SpeciesOracle):
@@ -272,7 +259,7 @@ def run_mc_agents():
         log(f"  mc agents world_seed={ws} done (+{len(world_rows)} rows)")
 
 
-# ===================== 代理增长微基准 =====================
+# 代理增长微基准
 
 def run_proxy_growth():
     from sklearn.gaussian_process import GaussianProcessRegressor
@@ -321,7 +308,7 @@ def run_proxy_growth():
     return rows
 
 
-# ===================== 主流程 =====================
+# 主流程
 
 def main():
     t_all = time.perf_counter()

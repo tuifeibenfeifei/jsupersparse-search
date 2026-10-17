@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
-"""peerj_nbins_scan.py — 超参敏感性小网格：n_bins ∈ {4,8,16}（建议7）。
+"""超参敏感性小网格：n_bins ∈ {4,8,16}（chlorophyll oracle，CHL_CFG 原样仅覆盖 n_bins）。
 
-场景：chlorophyll oracle（chlorophyll-search/data/oracle.npz）
-配置：results/ablation_cross/run_cross_ablation.py 的 CHL_CFG 原样，仅覆盖 n_bins
-种子：algo_seed 101..105（5 个），每 (n_bins, seed) 1 个 episode
-输出：supplement_stats/peerj_nbins_scan.csv（n_bins,algo_seed,points_found,total_queries）
+种子 algo_seed 101..105，每 (n_bins, seed) 1 个 episode。
+输出 supplement_stats/peerj_nbins_scan.csv（n_bins,algo_seed,points_found,total_queries）。
 """
 import csv
 import sys

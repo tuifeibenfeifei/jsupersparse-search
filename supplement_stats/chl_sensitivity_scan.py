@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# --- repository root (auto-located) ---
 import os
 from pathlib import Path
 REPO_ROOT = Path(__file__).resolve()
@@ -7,18 +6,11 @@ for _ in range(8):
     if (REPO_ROOT / 'configs').is_dir():
         break
     REPO_ROOT = REPO_ROOT.parent
-# --------------------------------------
-"""chl_sensitivity_scan.py — 补跑 TABLE XIV 敏感性扫描（seeds 101–110, n=10）。
+"""补跑 TABLE XIV 敏感性扫描（seeds 101-110，n=10）。
 
-论文 TABLE XIV（ONE-AT-A-TIME SENSITIVITY OF QUERY COST）的默认行 1486.2
-与 aucmin 行在现有 results 中均无数据源（旧值无来源），且 "shipped 0.55"
-与代码实际默认 weak_signal_min_auc=0.52 不符。本脚本用当前框架重跑整张表：
-  - coverage_budget_ratio: 0.05 / 0.08 / 0.12(default) / 0.20 / 0.30
-  - weak_signal_min_auc:   0.50 / 0.53 / 0.52(default) / 0.55 / 0.60 / 0.70
-每配置 seeds 101–110（n=10），统计 mean queries + change vs default。
-输出：supplement_stats/chl_sensitivity_scan.csv
-用法（PYTHONPATH 指向 the local dependency directory）：
-  python supplement_stats/chl_sensitivity_scan.py
+coverage_budget_ratio: 0.05 / 0.08 / 0.12(default) / 0.20 / 0.30；
+weak_signal_min_auc: 0.50 / 0.53 / 0.52(default) / 0.55 / 0.60 / 0.70。
+输出 supplement_stats/chl_sensitivity_scan.csv（mean queries + change vs default）。
 """
 import csv
 import sys

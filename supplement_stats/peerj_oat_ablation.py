@@ -1,12 +1,8 @@
 # -*- coding: utf-8 -*-
-"""peerj_oat_ablation.py — 统一机制 x 场景 OAT 消融矩阵实验。
+"""统一机制 × 场景 OAT 消融矩阵实验。
 
-复用 results/ablation_cross/ablation_detail.csv 已有行（full / AUC_off / multicluster_off），
-补跑缺失消融臂并记录 covered_cells，最后由 --matrix 模式生成 peerj_oat_matrix.md。
-
-用法：
-  python peerj_oat_ablation.py          # 跑缺失变体（可断点续跑）
-  python peerj_oat_ablation.py --matrix # 仅从 CSV 重算矩阵报告
+复用 ablation_detail.csv 已有行（full/AUC_off/multicluster_off），补跑缺失消融臂并记录 covered_cells；
+--matrix 模式从 CSV 重算生成 peerj_oat_matrix.md。
 """
 import csv
 import sys
@@ -42,7 +38,7 @@ def log(msg):
         f.write(line + "\n")
 
 
-# ---------------- 基础配置（与 run_cross_ablation.py 完全一致） ----------------
+# 基础配置（与 run_cross_ablation.py 完全一致）
 MC_CFG = dict(
     target_points=40, max_queries=10000, min_dist_cells=2.0,
     stage2_min=3, stage3_min=5, stage3_jump_interval=30,
@@ -111,7 +107,7 @@ NEW_ARMS = [
 ]
 
 
-# ---------------- I/O ----------------
+# I/O
 HEADER = ["scenario", "variant", "world_seed", "algo_seed",
           "points_found", "total_queries", "covered_cells"]
 
@@ -147,7 +143,7 @@ def append_row(row):
         w.writerow(row)
 
 
-# ---------------- 运行 ----------------
+# 运行
 def expected_count(scenario, algo_seeds):
     n_world = len(MC_WORLD_SEEDS) if scenario == "minecraft" else 1
     return n_world * len(algo_seeds)
@@ -212,7 +208,7 @@ def run_all():
     log(f"=== run all done, total {(time.time()-t_all)/60:.1f} min ===")
 
 
-# ---------------- 统计与矩阵 ----------------
+# 统计与矩阵
 def cliff_delta(a, b):
     a = np.asarray(a, float); b = np.asarray(b, float)
     n, m = len(a), len(b)

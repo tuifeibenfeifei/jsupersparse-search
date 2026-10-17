@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# --- repository root (auto-located) ---
 import os
 from pathlib import Path
 REPO_ROOT = Path(__file__).resolve()
@@ -7,17 +6,10 @@ for _ in range(8):
     if (REPO_ROOT / 'configs').is_dir():
         break
     REPO_ROOT = REPO_ROOT.parent
-# --------------------------------------
-"""final_stats.py — 全量统一替换所需的剩余统计量（一次性算清）。
+"""全量统一替换所需的剩余统计量（一次性算清）。
 
-输入：
-  results/ablation_cross/ablation_detail.csv （archived 批：full / AUC_off / multicluster_off）
-  supplement_stats/screen_off_arms.csv       （新补跑：screen-off 臂）
-输出（stdout + supplement_stats/final_stats.csv）：
-  - chl: full vs guidance-off（queries）：mean diff、单尾 p、Cliff's δ
-  - chl: full vs screen-off（queries）：mean diff、单尾 p、Cliff's δ、bootstrap 95% CI
-  - cl : full vs guidance-off（points）：mean diff、单尾 p、Cliff's δ
-  - cl : full vs screen-off（points）：mean diff、单尾 p、Cliff's δ
+输入 ablation_detail.csv（full/AUC_off/multicluster_off）与 screen_off_arms.csv；
+输出 final_stats.csv：chl/cl 各四组配对（queries/points，单尾 p + Cliff's δ，chl screen-off 另加 bootstrap 95% CI）。
 """
 import csv
 from pathlib import Path

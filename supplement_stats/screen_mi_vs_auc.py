@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# --- repository root (auto-located) ---
 import os
 from pathlib import Path
 REPO_ROOT = Path(__file__).resolve()
@@ -7,16 +6,10 @@ for _ in range(8):
     if (REPO_ROOT / 'configs').is_dir():
         break
     REPO_ROOT = REPO_ROOT.parent
-# --------------------------------------
-"""screen_mi_vs_auc.py — S3 信息论屏幕 vs AUC 屏幕替身对照（叶绿素场，7真+12噪）
+"""S3 替身对照：同一两阶段屏幕流程下，精筛统计量 AUC vs 互信息（叶绿素场）。
 
-回应"为什么不用互信息"：在完全相同的两阶段屏幕流程
-（variance 粗筛 top-12 → 精筛统计量）下，仅替换精筛统计量：
-  - AUC 版：Mann-Whitney U → AUC（方向无关分离度），阈值 weak_signal_min_auc=0.52（框架默认）
-  - MI 版：互信息（分箱 B=8，log2 比特）排序，取与 AUC 版相同数量 K
-输出：屏幕排序质量（Rec@7、真协变量均值秩、噪声最佳秩）与选择集质量（选中真/噪声数）。
-
-不修改算法框架代码；本脚本为独立评估脚本（替身对照，阶段三 S3 定稿方案）。
+AUC 版阈值 weak_signal_min_auc=0.52；MI 版分箱 B=8、log2 比特，取同数量 K。
+输出屏幕排序质量（Rec@7、真协变量均值秩、噪声最佳秩）与选择集质量（选中真/噪声数）。
 """
 import csv
 import os
@@ -146,17 +139,17 @@ def evaluate(sample_idx, sample_y):
         return dict(rec7=rec7, rec12=rec12, true_mean_rank=float(np.mean(true_rk)),
                     noise_best_rank=int(noise_best), sel_true=sel_true, sel_noise=sel_noise)
 
-    # ---- 共同流程：箱密度方差粗筛 top-12 + 渐进 topk ----
+    # 共同流程：箱密度方差粗筛 top-12 + 渐进 topk
     var_order = np.argsort(-np.asarray(dens_vars, dtype=float), kind="stable")[:VARIANCE_TOP]
     topk = min(SPARSE_TOPK_BASE + max(0, (n_pos - 5) // 15), len(var_order))
 
-    # ---- AUC 版：粗筛池内按 AUC 排序取 topk，保留 > 阈值 ----
+    # AUC 版：粗筛池内按 AUC 排序取 topk，保留 > 阈值
     auc_pool = {k[i]: aucs[i] for i in var_order}
     ranked_a = sorted(var_order, key=lambda i: -auc_pool[i])[:topk]
     sel_auc = [i for i in ranked_a if auc_pool[i] > WEAK_SIG_MIN_AUC]
     K = len(sel_auc)
 
-    # ---- MI 版：同一池、同一 topk，按互信息排序取同样数量 K ----
+    # MI 版：同一池、同一 topk，按互信息排序取同样数量 K
     mi_pool = {k[i]: mis[i] for i in var_order}
     ranked_m = sorted(var_order, key=lambda i: -mi_pool[i])[:topk]
     sel_mi = ranked_m[:K]

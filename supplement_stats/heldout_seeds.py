@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# --- repository root (auto-located) ---
 import os
 from pathlib import Path
 REPO_ROOT = Path(__file__).resolve()
@@ -7,25 +6,12 @@ for _ in range(8):
     if (REPO_ROOT / 'configs').is_dir():
         break
     REPO_ROOT = REPO_ROOT.parent
-# --------------------------------------
-"""heldout_seeds.py — held-out 种子块验证（任务：调参种子=评估种子的数据泄漏回应）。
+"""held-out 种子块验证（SEEDS=201-220，与调参/评估块 101-120 分离）。
 
-设计：
-  - 种子块：SEEDS = 201–220（与论文调参/评估块 101–120 完全分离，未参与任何调参）
-  - 场景×variant：clouded_leopard / chlorophyll × {full, AUC_off, multicluster_off}
-    （与 results/ablation_cross/ablation_detail.csv 完全同构，便于逐项对比结论稳定性）
-  - 基线（chlorophyll）：greedy / hill_climb 在 held-out 种子块重跑（复用 harmful_arms 的
-    Env/Proxy 逻辑），验证 H4「框架显著更耗查询」在 held-out 上是否成立
-  - 输出：
-      results/ablation_cross/ablation_detail_heldout.csv   （框架三配置，含 world_seed=0 占位）
-      supplement_stats/heldout_chl_baselines.csv           （greedy/hill_climb 明细）
-      supplement_stats/heldout_summary.csv                 （逐场景×variant 均值 + 配对检验）
-  - 统计口径与手稿 TABLE XI 一致：单尾 Wilcoxon + Cliff's delta（方向同 harmful_arms_paired）
-
-用法：
-  $env:PYTHONPATH=REPO_ROOT / ".pylibs"
-  python supplement_stats/heldout_seeds.py            # 全量
-  python supplement_stats/heldout_seeds.py --smoke 2  # 每单元先跑 2 种子试跑
+场景×variant：clouded_leopard / chlorophyll × {full, AUC_off, multicluster_off}；
+chlorophyll 基线重跑 greedy/hill_climb（复用 harmful_arms Env/Proxy）。
+输出 ablation_detail_heldout.csv / heldout_chl_baselines.csv / heldout_summary.csv。
+统计口径与手稿 TABLE XI 一致：单尾 Wilcoxon + Cliff's delta。
 """
 import argparse
 import csv
@@ -59,7 +45,7 @@ LOG = HERE / "heldout_seeds.log"
 SEEDS = list(range(201, 221))        # held-out 块（20 种子）
 TUNED = list(range(101, 121))        # 调参/评估块（对照用）
 
-# ---- 与 run_cross_ablation.py 完全相同的配置 ----
+# 与 run_cross_ablation.py 完全相同的配置
 SPP_CFG = dict(
     target_points=20, max_queries=20000, min_dist_cells=1.0,
     stage2_min=3, stage3_min=5, stage3_jump_interval=30,
@@ -140,7 +126,7 @@ def paired(a, b, direction):
                 wilcox_p=round(p, 4), cliff_delta=round(cliff_delta(a, b), 4))
 
 
-# ---- 叶绿素基线（复用 harmful_arms 的 Env/Proxy/algo 逻辑）----
+# 叶绿素基线（复用 harmful_arms 的 Env/Proxy/algo 逻辑）
 class Env:
     def __init__(self, oracle):
         self.o = oracle

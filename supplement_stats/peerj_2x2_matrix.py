@@ -1,25 +1,9 @@
 # -*- coding: utf-8 -*-
-"""peerj_2x2_matrix.py — 2x2 分解矩阵实验：selector(on/off) x scheduler(greedy/smart)。
+"""2x2 分解矩阵实验：selector(on/off) × scheduler(greedy/smart)，四场景。
 
-四场景：chlorophyll / ocean3d / clouded_leopard / minecraft。
-selector = AUC 在线稀疏特征筛选（sparse_guidance）。
-  - selector on  = sparse_guidance=True （密度引导 guidance_on 仍 True）
-  - selector off = sparse_guidance=False（密度引导保留；AUC_off=guidance_on=False 是整链关，另列参考）
-scheduler:
-  - smart = 分阶段 + Q-learning + 远跳（SpeciesSearcher / Searcher3D 框架）
-  - greedy = 每步选全局最优未访问格（on=协变量代理；off=空间邻近）
-
-臂矩阵（每场景）：
-  sel_on_smart    = full 框架（复用 ablation_detail.csv / screen_off_arms.csv / O3D5 CSV）
-  sel_off_smart   = sparse_guidance=False, guidance_on=True（复用 screen_off_arms.csv / O3D5 CSV / MC full）
-  sel_on_greedy   = 协变量代理贪心（新跑）
-  sel_off_greedy  = 空间纯贪心（新跑）
-参考臂：AUC_off（guidance_on=False+sparse=False，整链引导关，仅列数字不进 2x2）。
-
-输出：
-  supplement_stats/peerj_2x2_detail.csv   逐 run 明细
-  supplement_stats/peerj_2x2_matrix.md    报告（含 2x2 表 + 配对检验 + 结论句）
-  supplement_stats/peerj_2x2_matrix.log   运行日志
+selector on = sparse_guidance=True；off = sparse_guidance=False（密度引导保留）；
+scheduler smart = 分阶段+Q-learning+远跳框架；greedy = 每步选全局最优未访问格。
+输出 peerj_2x2_detail.csv / peerj_2x2_matrix.md / peerj_2x2_matrix.log。
 """
 import csv
 import math
@@ -51,7 +35,7 @@ LOG = HERE / "peerj_2x2_matrix.log"
 SEEDS = list(range(101, 121))  # 20 algo seeds
 MC_WORLDS_FULL = list(range(1, 21))
 
-# ---------------- 配置（与 run_cross_ablation.py / run_o3d_regress_F.py 逐字一致） ----------------
+# 配置（与 run_cross_ablation.py / run_o3d_regress_F.py 逐字一致）
 MC_CFG = dict(
     target_points=40, max_queries=10000, min_dist_cells=2.0,
     stage2_min=3, stage3_min=5, stage3_jump_interval=30,
@@ -120,7 +104,7 @@ ORACLE_PATHS = {
     "clouded_leopard": ROOT / "species-search" / "data" / "clouded_leopard" / "oracle.npz",
 }
 
-# ---------------- 日志 ----------------
+# 日志
 def log(msg):
     line = f"[{datetime.now().strftime('%H:%M:%S')}] {msg}"
     print(line, flush=True)
@@ -133,9 +117,7 @@ def load_csv(p):
         return list(csv.DictReader(f))
 
 
-# ============================================================
 #  贪心臂实现（2D + 3D；协变量代理 + 空间纯贪心）
-# ============================================================
 
 class Env2D:
     """与 harmful_arms_paired.Env 逐字一致的 2D 交互环境。"""
@@ -284,7 +266,7 @@ class GreedyRunner2D:
         return env.result()
 
 
-# ---------------- 3D ----------------
+# 3D
 class Env3D:
     def __init__(self, oracle, target, max_q, min_d):
         self.o = oracle
@@ -429,9 +411,7 @@ class GreedyRunner3D:
         return env.result()
 
 
-# ============================================================
 #  既有数据加载
-# ============================================================
 
 def load_ablation():
     return load_csv(ROOT / "results" / "ablation_cross" / "ablation_detail.csv")
@@ -505,9 +485,7 @@ def collect_reused_rows():
     return rows
 
 
-# ============================================================
 #  新跑：smart 臂（MC on-smart, O3D on-smart）
-# ============================================================
 
 def run_mc_on_smart(world_seeds, algo_seeds):
     """MC_CFG + sparse_guidance=True（selector on, smart scheduler）。"""
@@ -538,9 +516,7 @@ def run_o3d_on_smart(oracle, algo_seeds):
     return rows
 
 
-# ============================================================
 #  主流程
-# ============================================================
 
 def main():
     t_all = time.time()
@@ -551,7 +527,7 @@ def main():
     detail_rows = collect_reused_rows()
     log(f"[reuse] 既有 smart 臂行数 = {len(detail_rows)}")
 
-    # ---------- 1. 贪心臂：chlorophyll ----------
+    # 1. 贪心臂：chlorophyll
     # sel_on_greedy（协变量代理）：直接复用 baseline_chl_greedy_detail.csv（20 seeds 恒=66，
     # 为 C1 数字对账硬锚；当前 numpy 2.0.2 的 argsort tie-break 与生成 CSV 时不同，
     # 重跑会得到 1258，故读既有 CSV 以保住锚点）。
@@ -581,7 +557,7 @@ def main():
                                 source="peerj_2x2_matrix.py:spatial"))
     log(f"    chlorophyll sel_off_greedy done ({time.time()-t0:.1f}s)")
 
-    # ---------- 2. 贪心臂：clouded_leopard ----------
+    # 2. 贪心臂：clouded_leopard
     log("--- [2] clouded_leopard greedy arms (20 seeds) ---")
     cl_oracle = SpeciesOracle(ORACLE_PATHS["clouded_leopard"])
     for ptype, cell in [("cov", "sel_on_greedy"), ("spatial", "sel_off_greedy")]:
@@ -598,7 +574,7 @@ def main():
                                     source=f"peerj_2x2_matrix.py:{ptype}"))
         log(f"    clouded_leopard {cell:16s} done ({time.time()-t0:.1f}s)")
 
-    # ---------- 3. minecraft：on-smart 新跑 + 两个 greedy ----------
+    # 3. minecraft：on-smart 新跑 + 两个 greedy
     # 先探针 5 runs 估时
     log("--- [3a] minecraft on-smart 探针 (1 world x 5 seeds) ---")
     probe_ws = 1
@@ -672,7 +648,7 @@ def main():
                 n_done += 1
         log(f"    MC {cell:16s} done n={n_done} ({time.time()-t0:.1f}s)")
 
-    # ---------- 4. ocean3d：on-smart 新跑 + 两个 greedy ----------
+    # 4. ocean3d：on-smart 新跑 + 两个 greedy
     log("--- [4] ocean3d arms ---")
     o3d_oracle = Oracle3D(ROOT / "ocean3d-search" / "data" / "oracle3d.npz")
     t0 = time.time()
@@ -700,7 +676,7 @@ def main():
                                     source=f"peerj_2x2_matrix.py:{ptype}"))
         log(f"    ocean3d {cell:16s} done ({time.time()-t0:.1f}s)")
 
-    # ---------- 写明细 CSV ----------
+    # 写明细 CSV
     fieldnames = ["scenario", "cell", "arm", "world_seed", "algo_seed",
                   "points_found", "total_queries", "covered_cells", "source"]
     with open(DETAIL_CSV, "w", newline="", encoding="utf-8") as f:
@@ -709,7 +685,7 @@ def main():
         w.writerows(detail_rows)
     log(f"[detail] -> {DETAIL_CSV} ({len(detail_rows)} rows)")
 
-    # ---------- 自检锚点 ----------
+    # 自检锚点
     log("--- self-check anchors ---")
     chl_on_g = [r for r in detail_rows if r["scenario"] == "chlorophyll"
                 and r["cell"] == "sel_on_greedy"]

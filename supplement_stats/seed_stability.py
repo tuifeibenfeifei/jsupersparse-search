@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# --- repository root (auto-located) ---
 import os
 from pathlib import Path
 REPO_ROOT = Path(__file__).resolve()
@@ -7,16 +6,12 @@ for _ in range(8):
     if (REPO_ROOT / 'configs').is_dir():
         break
     REPO_ROOT = REPO_ROOT.parent
-# --------------------------------------
-"""seed_stability.py — 种子稳定性判断（任务16）。
+"""种子稳定性判断。
 
-证据链：
-  E1 确定性（同 seed 复现）：results/chl_search/regress_v2_v0cfg/rng_crosscheck.csv
-     —— 单进程 vs 多线程，8 seed 的 points/queries 全部一致。
-  E2 跨种子分布（20 seeds）：MC framework_mc_detail（20 world × 20 algo）、
-     species clouded_leopard / black_muntjac params19。
-  E3 跨种子分布（10 seeds）：timevary v5 per_seed_*_decay300（moving_plume/abrupt_jump）。
-输出：supplement_stats/seed_stability.csv + 控制台结论。
+E1 确定性：rng_crosscheck.csv（单进程 vs 多线程，8 seed 的 points/queries 全部一致）；
+E2 跨种子（20 seeds）：MC framework_mc_detail、species clouded_leopard / black_muntjac params19；
+E3 跨种子（10 seeds）：timevary v5 per_seed_*_decay300。
+输出 supplement_stats/seed_stability.csv + 控制台结论。
 """
 import csv
 from pathlib import Path

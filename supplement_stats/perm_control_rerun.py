@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# --- repository root (auto-located) ---
 import os
 from pathlib import Path
 REPO_ROOT = Path(__file__).resolve()
@@ -7,26 +6,10 @@ for _ in range(8):
     if (REPO_ROOT / 'configs').is_dir():
         break
     REPO_ROOT = REPO_ROOT.parent
-# --------------------------------------
-"""perm_control_rerun.py — 置换对照复跑（TABLE XIII 全量统一用）。
+"""置换对照复跑（TABLE XIII 全量统一）：perm7 置换 7 个真实协变量，perm12 置换 12 个噪声协变量。
 
-背景：手稿 TABLE XIII（COVARIATE PERMUTATION CONTROL ON THE CHLOROPHYLL FIELD）
-的实时值（Real = 1605.2、perm7 = 2115.8、perm12 = 1631.2）在仓库中无源数据与
-实现脚本。为把整篇论文统一到"当前代码 + 数据可精确复现"的口径，本脚本按论文
-V-I 节的描述重建该对照：
-
-  - 对 7 个真实协变量（索引 0–6）的每一个平面做固定的空间置换 → arm "perm7"
-  - 对 12 个噪声协变量（索引 7–18）的每一个平面做固定的空间置换 → arm "perm12"
-  - "each covariate plane is spatially permuted with its marginals preserved
-    exactly and its spatial arrangement destroyed"：逐平面独立随机置换
-    （保边际分布、毁空间结构），每个 arm 的置换在全部算法种子上固定；
-  - presence 字段保持原样（置换只影响 agent 看到的协变量平面，不动出现场）。
-
-输出：
-  supplement_stats/perm_oracles/oracle_perm7.npz / oracle_perm12.npz（置换后的 oracle）
-  supplement_stats/perm_control.csv（逐 seed 明细）
-用法：
-  PYTHONPATH=...\.pylibs  python supplement_stats/perm_control_rerun.py
+逐平面独立随机置换（保边际分布、毁空间结构），presence 保持原样，置换在全部算法种子上固定。
+输出 perm_oracles/oracle_perm7.npz / oracle_perm12.npz、perm_control.csv。
 """
 import csv
 import sys

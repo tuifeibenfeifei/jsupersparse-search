@@ -1,13 +1,8 @@
 # -*- coding: utf-8 -*-
-"""peerj_stats_unified.py — 统一统计呈现（建议5）。
+"""统一统计呈现：从已有 CSV 重算（不重跑实验）。
 
-从已有 CSV 重算，不重跑实验：
-  - results/ablation_cross/ablation_detail.csv  （3场景 × full/AUC_off/multicluster_off）
-  - supplement_stats/screen_mi_vs_auc.csv       （叶绿素选择器逐事件 sel_true/sel_noise 计数）
-
-输出：
-  - supplement_stats/peerj_stats_unified.csv    （统一统计表长表）
-打印 Wilson CI 与锚点自检，供写入 peerj_stats_unified.md。
+输入 ablation_detail.csv（3 场景 × full/AUC_off/multicluster_off）与 screen_mi_vs_auc.csv；
+输出 peerj_stats_unified.csv（统一统计长表），另打印 Wilson CI 与锚点自检。
 """
 import csv
 import math
@@ -24,7 +19,7 @@ OUT_CSV = ROOT / "supplement_stats" / "peerj_stats_unified.csv"
 ALGO_SEEDS = list(range(101, 121))   # 101..120
 
 
-# ---------------------------------------------------------------- 读 ablation
+# 读 ablation
 def load_ablation():
     rows = []
     with open(ABL, encoding="utf-8") as f:
@@ -81,7 +76,7 @@ def one_sided_wilcoxon(d, alternative):
         return float("nan")
 
 
-# ---------------------------------------------------------------- Wilson CI
+# Wilson CI
 def wilson_ci(phat, n, z=1.959963984540054):
     denom = 1.0 + z * z / n
     center = (phat + z * z / (2 * n)) / denom
@@ -89,7 +84,7 @@ def wilson_ci(phat, n, z=1.959963984540054):
     return center - half, center + half
 
 
-# ---------------------------------------------------------------- main
+# main
 def main():
     rows = load_ablation()
 
@@ -147,7 +142,7 @@ def main():
         w.writerows(out)
     print(f"\n[saved] {OUT_CSV}  ({len(out)} rows)")
 
-    # ---------------------------------------------------------------- Wilson
+    # Wilson
     print("\n=== 选择器 precision 0.763 的 Wilson 95% CI ===")
     scr_rows = []
     with open(SCR, encoding="utf-8") as f:

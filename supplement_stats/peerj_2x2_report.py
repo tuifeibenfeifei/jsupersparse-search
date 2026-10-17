@@ -106,7 +106,7 @@ def main():
     w("- minecraft sel_on_smart = MC_CFG + `{sparse_guidance:True}` 新跑 400 runs；其余 smart 臂复用既有 CSV。")
     w()
 
-    # ---------- 每场景 2x2 表 ----------
+    # 每场景 2x2 表
     summary = {}  # scenario -> dict of stats
 
     for sc in SCENARIOS:
@@ -147,7 +147,7 @@ def main():
           f"q={fmt_ms(q_off_s)} (n={n_off_s}), p={fmt_msi(p_off_s)} |")
         w()
 
-        # ---- 对比 1：同 scheduler，selector on vs off ----
+        # 对比 1：同 scheduler，selector on vs off
         key = "algo_seed"
         if sc == "minecraft":
             key = "world_algo"
@@ -200,7 +200,7 @@ def main():
           f"Δ(on−off)={dp_g:+.2f}。")
         w()
 
-        # ---- 对比 C：同 selector，smart vs greedy ----
+        # 对比 C：同 selector，smart vs greedy
         # selector on: smart vs greedy
         # 注意：smart 和 greedy 的种子配对方式不同（MC 有 world_seed），但我们按 algo_seed 聚合
         # 对 MC，smart 有 400 runs，greedy 有 400 runs，可按 (world,algo) 配对
@@ -247,7 +247,7 @@ def main():
               f"points mean={np.mean(p_ref):.2f}。")
             w()
 
-    # ---------- 跨场景结论 ----------
+    # 跨场景结论
     w("## 跨场景结论与『selector 可迁移、scheduler 不可』证据")
     w()
 
@@ -287,7 +287,7 @@ def main():
           f"{np.mean(s['q_off_s'])-np.mean(s['q_off_g']):+.0f} |")
     w()
 
-    # ---------- 论文结论句 ----------
+    # 论文结论句
     w("## 可写入论文的结论句（带数字）")
     w()
 

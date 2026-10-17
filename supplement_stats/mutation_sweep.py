@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# --- repository root (auto-located) ---
 import os
 from pathlib import Path
 REPO_ROOT = Path(__file__).resolve()
@@ -7,15 +6,11 @@ for _ in range(8):
     if (REPO_ROOT / 'configs').is_dir():
         break
     REPO_ROOT = REPO_ROOT.parent
-# --------------------------------------
-"""mutation_sweep.py — mutation_streak_thresh 敏感性扫描（任务14）。
+"""mutation_streak_thresh 敏感性扫描（moving_plume + abrupt_jump 场景）。
 
-场景：moving_plume（平滑漂移）+ abrupt_jump（突变）。
-阈值档位：10 / 20 / 30 / 40(默认) / 60 / 80。
-口径：N=60, MAX_Q=1500, TARGET=20, MIN_D=2.0, seeds 101-110；
-      基配置 = FIX_MOTION（mutation_detect + mutation_auto_motion，见
-      results/timevary_search/v5/_diag_v5.py，decay_tau=300, sparse_topk=5）。
-输出：supplement_stats/mutation_sweep/ 下 per-variant CSV + summary CSV。
+阈值档位 10/20/30/40(default)/60/80；口径 N=60, MAX_Q=1500, TARGET=20, MIN_D=2.0, seeds 101-110；
+基配置 FIX_MOTION（见 results/timevary_search/v5/_diag_v5.py，decay_tau=300, sparse_topk=5）。
+输出 supplement_stats/mutation_sweep/ 下 per-variant CSV + summary CSV。
 """
 import csv
 import sys

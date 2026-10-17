@@ -1,11 +1,8 @@
 # -*- coding: utf-8 -*-
-"""peerj_oat_post.py — 复现性口径修正后处理（在 peerj_oat_ablation.py 主跑批完成后运行）。
+"""复现性口径修正后处理（在 peerj_oat_ablation.py 主跑批完成后运行）。
 
-1) clouded_leopard full：seed 101-105 在本环境重跑，与 ablation_detail.csv 逐位比对。
-   - 5/5 一致：CL 列继续复用旧行（矩阵口径注明"抽查 5/5 一致"）。
-   - 否则：本环境重跑 CL full 20 seeds，替换 peerj_oat_detail.csv 中旧 CL full 行。
-2) chlorophyll full：本环境重跑 20 seeds（与新变体同执行状态），替换旧 CHL full 行。
-   （10-03 ablation_detail.csv 的 CHL full 与本环境不可逐位复现，见复现性审计。）
+1) clouded_leopard full：seed 101-105 本环境重跑并与 ablation_detail.csv 逐位比对，5/5 一致则复用旧行，否则重跑 20 seeds 替换；
+2) chlorophyll full：本环境重跑 20 seeds 替换旧 CHL full 行；
 3) minecraft：不处理（旧行已逐位核对）。
 """
 import csv
@@ -73,7 +70,7 @@ def main():
     log("=== post repro-calibration start ===")
     rows, fields = load_rows()
 
-    # ---- 1) CL spot check seeds 101-105 ----
+    # 1) CL spot check seeds 101-105
     with open(OLD_CSV, encoding="utf-8-sig") as f:
         old = list(csv.DictReader(f))
     old_cl_full = {int(r["algo_seed"]): r for r in old
@@ -100,7 +97,7 @@ def main():
         rows.extend(cl_fresh)
         cl_replace = True
 
-    # ---- 2) CHL full rerun 20 seeds ----
+    # 2) CHL full rerun 20 seeds
     chl_fresh = run_full("chlorophyll", SEEDS)
     mp = sum(r["points_found"] for r in chl_fresh) / 20
     mq = sum(r["total_queries"] for r in chl_fresh) / 20
