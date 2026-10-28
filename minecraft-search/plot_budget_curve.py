@@ -18,7 +18,7 @@ import numpy as np
 
 ROOT = Path(REPO_ROOT)
 csv_path = ROOT / "results" / "minecraft_search" / "budget_curve.csv"
-out_png = ROOT / "page" / "manuscript" / "figures_en" / "Figure_budget_recall.png"
+out_png = ROOT / "figures" / "Figure_budget_recall.png"
 out_png.parent.mkdir(parents=True, exist_ok=True)
 
 budgets = [500, 1000, 2000, 5000, 10000]

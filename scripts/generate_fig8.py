@@ -62,6 +62,7 @@ for i, ratio in enumerate(ratios):
                 ha='center', va='bottom', fontsize=10, fontweight='bold', color='#388E3C')
 
 plt.tight_layout()
+(REPO_ROOT / "figures").mkdir(parents=True, exist_ok=True)
 plt.savefig(REPO_ROOT / "figures/Fig8_sample_efficiency.png", 
             dpi=300, bbox_inches='tight', facecolor='white')
 plt.close()

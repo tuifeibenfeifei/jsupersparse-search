@@ -106,7 +106,7 @@ input_box = FancyBboxPatch((1, 1.5), 3, 1.2, boxstyle="round,pad=0.1",
 ax.add_patch(input_box)
 ax.text(2.5, 2.3, 'Input: Binary Presence', ha='center', va='center', 
         fontsize=10, fontweight='bold')
-ax.text(2.5, 1.8, 'presence ∈ {0,1}\n+ covariate vector x', ha='center', va='center', fontsize=8)
+ax.text(2.5, 1.8, 'presence in {0,1}\n+ covariate vector x', ha='center', va='center', fontsize=8)
 
 # Output: Valid points
 output_box = FancyBboxPatch((8, 1.5), 3, 1.2, boxstyle="round,pad=0.1", 
@@ -136,6 +136,7 @@ ax.text(6, 1.8, 'Random, Grid, Hill Climb\nGP-UCB, Go-Explore, etc.', ha='center
 
 # Save figure
 plt.tight_layout()
+(REPO_ROOT / "figures").mkdir(parents=True, exist_ok=True)
 plt.savefig(REPO_ROOT / "figures/Fig1_framework_architecture.png", 
             dpi=300, bbox_inches='tight', facecolor='white')
 plt.close()
