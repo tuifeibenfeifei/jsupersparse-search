@@ -1,5 +1,5 @@
 # src/traversal_strategies/adaptive_sampling.py
-"""[微观] 策略8：根据温度反馈动态调整查点位置"""
+"""[Micro] Strategy 8: dynamically adjust query-point positions based on temperature feedback"""
 from typing import List, Tuple, Optional
 from .base_strategy import BaseStrategy
 from ._utils import generate_grid_points, generate_corner_points
@@ -7,14 +7,14 @@ from ._utils import generate_grid_points, generate_corner_points
 
 class AdaptiveSamplingStrategy(BaseStrategy):
     """
-    自适应采样：根据已积累的温度数据动态调整区块内采样策略
+    Adaptive sampling: dynamically adjust the in-chunk sampling strategy based on accumulated temperature data
 
-    当温度开启时：
-        若当前区块温度接近已发现深海的平均温度 → 采用3x3网格密集采样
-        否则 → 仅查四角+中心（轻量采样）
+    When temperature is enabled:
+        if the current chunk temperature is close to the mean temperature of discovered deep sea -> use dense 3x3 grid sampling
+        otherwise -> query only the four corners + center (lightweight sampling)
 
-    当温度关闭时：
-        退化为四角+中心5点采样
+    When temperature is disabled:
+        degrade to 5-point sampling: four corners + center
     """
 
     def __init__(self, reference_temps: Optional[List[float]] = None, **kwargs):
@@ -26,38 +26,38 @@ class AdaptiveSamplingStrategy(BaseStrategy):
         return "adaptive_sampling"
 
     def set_reference_temps(self, temps: List[float]) -> None:
-        """外部注入参考温度（由main_algorithm.py在发现深海点时调用）"""
+        """inject reference temperatures externally (called by main_algorithm.py when a deep-sea point is found)"""
         self._reference_temps = list(temps)
 
     def get_points(self, chunk_x: int, chunk_z: int, temperature: float = None) -> List[Tuple[int, int]]:
         """
-        根据温度反馈决定采样策略
+        Decide the sampling strategy based on temperature feedback
         Args:
-            chunk_x/chunk_z: 区块坐标
-            temperature: 当前区块温度（由main_algorithm.py注入）
+            chunk_x/chunk_z: chunk coordinates
+            temperature: current chunk temperature (injected by main_algorithm.py)
         """
-        # 无参考温度或无当前温度 → 使用默认策略
+        # no reference temperature or no current temperature -> use the default strategy
         if not self._reference_temps or temperature is None:
             return self._default_points(chunk_x, chunk_z)
 
         import math
         ref_mean = sum(self._reference_temps) / len(self._reference_temps)
 
-        # 计算参考温度标准差
+        # compute the standard deviation of reference temperatures
         if len(self._reference_temps) >= 3:
             ref_std = (sum((t - ref_mean) ** 2 for t in self._reference_temps) / len(self._reference_temps)) ** 0.5
             threshold = ref_std * 0.5 if ref_std > 0 else 0.3
         else:
             threshold = 0.3
 
-        # 温度接近参考均值 → 密集采样
+        # temperature close to the reference mean -> dense sampling
         if abs(temperature - ref_mean) < threshold:
             return generate_grid_points(chunk_x, chunk_z, rows=3, cols=3)
 
         return self._default_points(chunk_x, chunk_z)
 
     def _default_points(self, chunk_x: int, chunk_z: int) -> List[Tuple[int, int]]:
-        """四角+中心5点采样"""
+        """5-point sampling: four corners + center"""
         cx = chunk_x * 16 + 8
         cz = chunk_z * 16 + 8
         return [(cx, cz)] + generate_corner_points(chunk_x, chunk_z)

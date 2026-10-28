@@ -1,22 +1,23 @@
 # ==============================================================================
-# 文件: curiosity_weight_sweep.yaml
-# 描述: Stage4 超参数微调层 —— 好奇心权重循环扫描 [1, 3, 5]
-# 说明: 锁定前三阶段最优结构，仅扫描好奇心奖励权重（curiosity_weight）。
+# file: curiosity_weight_sweep.yaml
+# description: Stage4 hyperparameter fine-tuning layer — curiosity weight sweep [1, 3, 5]
+# note: the best structure of the first three stages is locked; only the curiosity reward weight (curiosity_weight) is swept.
 #
-# ⚠️ 继承占位说明（需求第八节）：本文件已锁定 Stage1 最优感知，且移动层已替换为
-#    Stage2 对比胜出结果（chunk_finder=adaptive_scan / threshold=416）。
-#    Stage4 本文件的唯一消融变量是 curiosity_weight。
+# inheritance placeholder note (Req. Sec. 8): this file has locked in the best Stage1 sensing config, and the movement layer has been replaced with
+#    the historical 5-strategy winner (chunk_finder=adaptive_scan / threshold=416); the final model adopts grid_scan,
+#    the head-to-head ray-vs-grid winner (2026-10-28, true-DLL rerun).
+#    the only ablation variable in this Stage4 file is curiosity_weight.
 #
-# ⚠️ 含 curiosity_weight_list 列表，由 run_ablation_stage4.py 遍历执行。
+#    contains the curiosity_weight_list, iterated over by run_ablation_stage4.py.
 # ==============================================================================
 
-# --- 核心消融变量：好奇心权重扫描列表 ---
+# --- core ablation variable: curiosity weight sweep list ---
 curiosity_weight_list:
   - 1
   - 3
   - 5
 
-# --- 感知层（继承 Stage1 最优，锁定）---
+# --- sensing layer (inherits the Stage1 best, locked) ---
 temperature_enabled: true
 temperature_in_state: false
 temperature_guidance_enabled: true
@@ -27,21 +28,21 @@ temperature_precision: 2
 spatial_granularity: 32
 micro_strategy: "center_point"
 
-# --- 移动层（继承 Stage2 最优：全量 20x20 对比胜出 = adaptive_scan，2026-09-22）---
+# --- movement layer (historical 5-strategy optimum = adaptive_scan, 2026-09-22; the final model uses grid_scan) ---
 chunk_finder: "adaptive_scan"
 deep_sea_distance_threshold: 416
 
-# --- 奖励开关（继承 Stage3 最优，跑完 Stage3 后替换）---
+# --- reward switches (inherits the Stage3 best, replaced after Stage3 finishes) ---
 deep_sea_reward_enabled: true
 curiosity_reward_enabled: true
 penalty_reward_enabled: true
 deep_sea_reward_value: 10.0
 curiosity_reward_value: 3.0
-# curiosity_weight 由 curiosity_weight_list 在运行时逐项注入
+# curiosity_weight is injected item by item at runtime from curiosity_weight_list
 out_of_bounds_penalty: -10.0
 repeat_visit_penalty: -5.0
 
-# --- RL超参数（显式锁定）---
+# --- RL hyperparameters (explicitly locked) ---
 learning_rate: 0.1
 discount_factor: 0.95
 epsilon_start: 1.0
@@ -49,11 +50,11 @@ epsilon_end: 0.05
 epsilon_decay: 0.995
 replay_buffer_size: 8192
 
-# --- 阶段切换阈值（显式锁定）---
+# --- stage-switching thresholds (explicitly locked) ---
 stage2_min_deep_sea_points: 5
 stage3_min_deep_sea_points: 10
 
-# --- 全局限制 ---
+# --- global limits ---
 max_queries_per_episode: 10000
 target_deep_sea_points: 40
 search_radius: 10000

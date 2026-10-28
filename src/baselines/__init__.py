@@ -1,4 +1,4 @@
-"""src/baselines/__init__.py - 基线算法插件包（L4 独立对比算法）"""
+"""src/baselines/__init__.py - baseline algorithm plugin package (L4 independent comparison algorithms)."""
 from .bfs import run_bfs
 from .go_explore import run_go_explore
 from .icm import run_icm

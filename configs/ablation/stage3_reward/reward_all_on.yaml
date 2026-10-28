@@ -1,17 +1,18 @@
 # ==============================================================================
-# 文件: reward_all_on.yaml
-# 描述: Stage3 奖励塑形层消融 —— 全开对照组（基准线）
-# 说明: 三项奖励（深海发现/好奇心/惩罚）全部开启，作为 Stage3 的对照基准。
+# file: reward_all_on.yaml
+# description: Stage3 reward-shaping layer ablation — full-on control group (baseline)
+# note: all three rewards (deep-sea discovery / curiosity / penalty) are enabled, serving as the Stage3 control baseline.
 #
-# ⚠️ 继承占位说明（需求第八节：阶段性基准值继承机制）：
-#   本文件已锁定 Stage1 最优感知配置（center_point + 温度不进状态仅做偏向）。
-#   下列两项应在 Stage2 跑完后替换为 Stage2 的最优结果：
-#     chunk_finder（当前=adaptive_scan，Stage2 全量 20x20 对比胜出）、
-#     deep_sea_distance_threshold（当前=416）
-#   Stage3 的唯一消融变量是 4 个奖励开关，其余必须与前两阶段最优保持一致。
+# inheritance placeholder note (Req. Sec. 8: staged baseline-value inheritance mechanism):
+#   this file has locked in the best Stage1 sensing config (center_point + temperature not entering state, used only as a bias).
+#   the following two items should be replaced with Stage2's best results after Stage2 finishes:
+#     chunk_finder (current=adaptive_scan, the historical 5-strategy winner); note this run uses adaptive_scan while the
+#     final model adopts grid_scan, the head-to-head ray-vs-grid winner (2026-10-28, true-DLL rerun),
+#     deep_sea_distance_threshold (current=416)
+#   Stage3's only ablation variable is the 4 reward switches; everything else must stay consistent with the best of the previous two stages.
 # ==============================================================================
 
-# --- 感知层（继承 Stage1 最优，锁定）---
+# --- sensing layer (inherits the Stage1 best, locked) ---
 temperature_enabled: true
 temperature_in_state: false
 temperature_guidance_enabled: true
@@ -22,11 +23,11 @@ temperature_precision: 2
 spatial_granularity: 32
 micro_strategy: "center_point"
 
-# --- 移动层（继承 Stage2 最优：全量 20x20 对比胜出 = adaptive_scan，2026-09-22）---
+# --- movement layer (historical 5-strategy optimum = adaptive_scan, 2026-09-22; the final model uses grid_scan) ---
 chunk_finder: "adaptive_scan"
 deep_sea_distance_threshold: 416
 
-# --- 奖励开关（本文件消融变量：全开对照组）---
+# --- reward switches (this file's ablation variable: full-on control group) ---
 deep_sea_reward_enabled: true
 curiosity_reward_enabled: true
 penalty_reward_enabled: true
@@ -36,7 +37,7 @@ curiosity_weight: 1.0
 out_of_bounds_penalty: -10.0
 repeat_visit_penalty: -5.0
 
-# --- RL超参数（显式锁定）---
+# --- RL hyperparameters (explicitly locked) ---
 learning_rate: 0.1
 discount_factor: 0.95
 epsilon_start: 1.0
@@ -44,11 +45,11 @@ epsilon_end: 0.05
 epsilon_decay: 0.995
 replay_buffer_size: 8192
 
-# --- 阶段切换阈值（显式锁定）---
+# --- stage-switching thresholds (explicitly locked) ---
 stage2_min_deep_sea_points: 5
 stage3_min_deep_sea_points: 10
 
-# --- 全局限制 ---
+# --- global limits ---
 max_queries_per_episode: 10000
 target_deep_sea_points: 40
 search_radius: 10000

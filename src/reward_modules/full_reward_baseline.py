@@ -1,21 +1,21 @@
 
 """
 full_reward_baseline.py
-[奖励] 全奖励聚合器（对照组）
-核心职责：聚合深海发现、好奇心、惩罚三项奖励，根据开关状态加权求和
-被 main_algorithm.py 在 Stage3 奖励驱动阶段调用，返回用于 Q-learning 更新的标量奖励值
+[Reward] Full-reward aggregator (control group)
+Core responsibility: aggregate the three rewards (deep-sea discovery, curiosity, penalty) and weight-sum them according to their on/off states
+Called by main_algorithm.py in the Stage3 reward-driven phase; returns the scalar reward used for the Q-learning update
 
-设计说明：
-    本文件不实现任何奖励计算逻辑，仅作为三个子模块的聚合器。
-    每个子模块独立通过 config 中的布尔开关控制启停，
-    支持 Stage3 消融实验中"单独关闭某一项"的场景。
+Design notes:
+    This file implements no reward-computation logic; it only aggregates the three submodules.
+    Each submodule is independently toggled on/off by a boolean switch in config,
+    supporting the Stage3 ablation scenario of "turning off one item in isolation".
 
-【修复依据】(≤100字)
-读取的配置键名全部对齐 configs/ 下 YAML 的实际写法（需求第十节：配置文件驱动，
-严禁硬编码）。原实现读的是 deep_sea_enabled / deep_sea_reward / penalty_repeated_visit
-等自造键名，YAML 里并不存在，导致 7 个开关与数值全部静默走默认值——Stage3 的
-消融配置写了也不生效。现改为读 deep_sea_reward_enabled / deep_sea_reward_value /
-repeat_visit_penalty 等，与 temp_on.yaml 逐字一致。奖励仍为 3 项之和，结构不变。
+[Fix rationale] (<=100 words)
+The config keys read all match the actual YAML keys under configs/ (Req. Sec. 10: config-file driven,
+no hardcoding). The original implementation read self-invented keys deep_sea_enabled / deep_sea_reward / penalty_repeated_visit
+that did not exist in the YAML, so all 7 switches and values silently fell back to defaults -- the Stage3
+ablation config had no effect. It now reads deep_sea_reward_enabled / deep_sea_reward_value /
+repeat_visit_penalty, etc., verbatim-identical to temp_on.yaml. The reward remains the sum of 3 terms; the structure is unchanged.
 """
 
 from typing import Optional
@@ -26,42 +26,42 @@ from .penalty_reward import PenaltyReward
 
 class FullRewardBaseline:
     """
-    全奖励聚合器
+    Full-reward aggregator
 
-    读取配置中的布尔开关，决定是否启用深海发现、好奇心、惩罚三项奖励，
-    并返回加权求和后的总奖励值。
+    Reads the boolean switches in config to decide whether to enable the three rewards (deep-sea discovery, curiosity, penalty),
+    and returns the weight-summed total reward.
 
-    需求第五节：总奖励为以下各项之和，温度仅作状态特征，不直接参与奖励计算。
+    Req. Sec. 5: the total reward is the sum of the following items; temperature is only a state feature and does not directly enter the reward.
 
-    消融实验配置示例（Stage3）：
-        reward_all_on:      全开对照组（三项 enabled 均为 True）
-        reward_no_deep:     关闭深海发现（deep_sea_reward_enabled=False）
-        reward_no_curiosity: 关闭好奇心（curiosity_reward_enabled=False）
-        reward_no_penalty:  关闭惩罚（penalty_reward_enabled=False）
+    Example ablation configs (Stage3):
+        reward_all_on:      all-on control group (all three enabled are True)
+        reward_no_deep:     deep-sea discovery off (deep_sea_reward_enabled=False)
+        reward_no_curiosity: curiosity off (curiosity_reward_enabled=False)
+        reward_no_penalty:  penalty off (penalty_reward_enabled=False)
     """
 
     def __init__(self, config: Optional[dict] = None, **kwargs):
         """
         Args:
-            config: 配置字典，键名与 configs/ablation/*.yaml 严格一致：
-                # 深海发现奖励（需求第五节：默认 +10）
-                - deep_sea_reward_enabled (bool): 是否启用深海发现奖励，默认 True
-                - deep_sea_reward_value (float): 深海发现奖励值，默认 10.0
-                - deep_sea_distance_threshold (float): 深海间距阈值，默认 416.0
+            config: config dict; keys strictly match configs/ablation/*.yaml:
+                # deep-sea discovery reward (Req. Sec. 5: default +10)
+                - deep_sea_reward_enabled (bool): whether to enable the deep-sea discovery reward, default True
+                - deep_sea_reward_value (float): deep-sea discovery reward value, default 10.0
+                - deep_sea_distance_threshold (float): deep-sea spacing threshold, default 416.0
 
-                # 好奇心奖励（需求第五节：默认 +3，权重可调）
-                - curiosity_reward_enabled (bool): 是否启用好奇心奖励，默认 True
-                - curiosity_reward_value (float): 好奇心奖励值，默认 3.0
-                - curiosity_weight (float): 好奇心权重，默认 1.0
+                # curiosity reward (Req. Sec. 5: default +3, weight adjustable)
+                - curiosity_reward_enabled (bool): whether to enable the curiosity reward, default True
+                - curiosity_reward_value (float): curiosity reward value, default 3.0
+                - curiosity_weight (float): curiosity weight, default 1.0
 
-                # 惩罚（需求第五节：越界 -10 / 重复访问 -5）
-                - penalty_reward_enabled (bool): 是否启用惩罚，默认 True
-                - out_of_bounds_penalty (float): 越界惩罚值，默认 -10.0
-                - repeat_visit_penalty (float): 重复访问惩罚值，默认 -5.0
+                # penalty (Req. Sec. 5: out-of-bounds -10 / repeated visit -5)
+                - penalty_reward_enabled (bool): whether to enable the penalty, default True
+                - out_of_bounds_penalty (float): out-of-bounds penalty value, default -10.0
+                - repeat_visit_penalty (float): repeated-visit penalty value, default -5.0
         """
         config = config or {}
 
-        # 深海发现奖励模块
+        # deep-sea discovery reward module
         deep_sea_config = {
             "enabled": config.get("deep_sea_reward_enabled", True),
             "reward": config.get("deep_sea_reward_value", 10.0),
@@ -69,7 +69,7 @@ class FullRewardBaseline:
         }
         self._deep_sea = DeepSeaReward(deep_sea_config)
 
-        # 好奇心奖励模块
+        # curiosity reward module
         curiosity_config = {
             "enabled": config.get("curiosity_reward_enabled", True),
             "reward": config.get("curiosity_reward_value", 3.0),
@@ -77,7 +77,7 @@ class FullRewardBaseline:
         }
         self._curiosity = CuriosityReward(curiosity_config)
 
-        # 惩罚模块
+        # penalty module
         penalty_config = {
             "enabled": config.get("penalty_reward_enabled", True),
             "out_of_bounds": config.get("out_of_bounds_penalty", -10.0),
@@ -94,20 +94,20 @@ class FullRewardBaseline:
         is_repeated_visit: bool = False,
     ) -> float:
         """
-        计算总奖励值（三项奖励之和）
+        Compute the total reward (sum of the three rewards)
 
-        调用顺序严格为：深海发现 → 好奇心 → 惩罚，
-        各模块之间完全解耦，互不影响。
+        Call order is strictly: deep-sea discovery -> curiosity -> penalty,
+        the modules are fully decoupled and do not affect each other.
 
         Args:
-            is_new_deep_sea: 是否为有效新深海点（已通过间距阈值校验）
-            distance_to_nearest: 到最近已有深海点的欧氏距离（仅用于日志）
-            is_new_state: 是否首次访问该离散状态（由 state_manager 判定）
-            is_out_of_bounds: 是否超出搜索范围（半径由 search_radius 配置）
-            is_repeated_visit: 是否重复访问已查询过的区块
+            is_new_deep_sea: whether this is a valid new deep-sea point (passed the spacing-threshold check)
+            distance_to_nearest: Euclidean distance to the nearest existing deep-sea point (for logging only)
+            is_new_state: whether this is the first visit to this discrete state (determined by state_manager)
+            is_out_of_bounds: whether it goes outside the search range (radius configured by search_radius)
+            is_repeated_visit: whether it repeatedly visits an already-queried chunk
 
         Returns:
-            总奖励值（float），用于 Q-learning 的 TD 误差计算
+            the total reward (float), used for the Q-learning TD-error computation
         """
         total = 0.0
         total += self._deep_sea.calculate(is_new_deep_sea, distance_to_nearest)
@@ -117,28 +117,28 @@ class FullRewardBaseline:
 
     @property
     def deep_sea(self) -> DeepSeaReward:
-        """深海发现奖励模块实例"""
+        """deep-sea discovery reward module instance"""
         return self._deep_sea
 
     @property
     def curiosity(self) -> CuriosityReward:
-        """好奇心奖励模块实例"""
+        """curiosity reward module instance"""
         return self._curiosity
 
     @property
     def penalty(self) -> PenaltyReward:
-        """惩罚奖励模块实例"""
+        """penalty reward module instance"""
         return self._penalty
 
     @property
     def config_summary(self) -> str:
         """
-        返回当前奖励模块的开关与参数摘要
+        Return a summary of the current reward module's switches and parameters
 
-        供 main_algorithm.py 在程序启动时动态生成输出说明头，
-        满足需求第十条"动态输出说明头"的规范要求。
+        used by main_algorithm.py to dynamically generate the output header at startup,
+        meeting the Req. Sec. 10 "dynamic output header" requirement.
         """
-        deep_status = f"深海发现={'开' if self._deep_sea.enabled else '关'}(+{self._deep_sea.reward})"
-        curi_status = f"好奇心={'开' if self._curiosity.enabled else '关'}(+{self._curiosity.reward}x{self._curiosity.weight})"
-        pen_status = f"惩罚={'开' if self._penalty.enabled else '关'}(越界{self._penalty.out_of_bounds}/重复{self._penalty.repeated_visit})"
+        deep_status = f"deep-sea discovery={'on' if self._deep_sea.enabled else 'off'}(+{self._deep_sea.reward})"
+        curi_status = f"curiosity={'on' if self._curiosity.enabled else 'off'}(+{self._curiosity.reward}x{self._curiosity.weight})"
+        pen_status = f"penalty={'on' if self._penalty.enabled else 'off'}(out-of-bounds {self._penalty.out_of_bounds}/repeated {self._penalty.repeated_visit})"
         return f"{deep_status} | {curi_status} | {pen_status}"

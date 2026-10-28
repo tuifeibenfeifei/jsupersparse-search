@@ -1,12 +1,12 @@
 # src/traversal_strategies/grid_3x3.py
-"""[微观] 策略4：把区块划成3x3网格查9个点"""
+"""Micro strategy 4: 3x3 grid over the chunk, nine points."""
 from typing import List, Tuple
 from .base_strategy import BaseStrategy
 from ._utils import generate_grid_points
 
 
 class Grid3x3Strategy(BaseStrategy):
-    """3x3网格采样：将区块划分为3x3均匀网格，查询9个网格交点"""
+    """3x3 grid sampling: split the chunk into a uniform 3x3 grid and query the nine intersections."""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

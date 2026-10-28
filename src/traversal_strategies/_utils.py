@@ -1,41 +1,41 @@
 # src/traversal_strategies/_utils.py
 """
-微观策略公共工具函数，避免代码重复
-（需求第九节：把 grid_3x3.py 和 adaptive_sampling.py 共同部分挑出来）
+Common utility functions for micro-strategies, to avoid code duplication
+(Req. Sec. 9: extract the common parts shared by grid_3x3.py and adaptive_sampling.py)
 """
 from typing import List, Tuple
 
 
 def chunk_bounds(chunk_x: int, chunk_z: int) -> Tuple[int, int, int, int]:
     """
-    返回区块的世界坐标边界 (x_min, z_min, x_max, z_max)
-    区块边长为16格，坐标范围 chunk*16 ~ chunk*16+15
+    Return the world-coordinate bounds of a chunk (x_min, z_min, x_max, z_max)
+    A chunk is 16 cells per side; the coordinate range is chunk*16 to chunk*16+15
     """
     x0, z0 = chunk_x * 16, chunk_z * 16
     return x0, z0, x0 + 15, z0 + 15
 
 
 def chunk_center(chunk_x: int, chunk_z: int) -> Tuple[int, int]:
-    """返回区块中心点世界坐标（与 9 种微观策略及参考实现取点方式一致）"""
+    """return the world coordinates of a chunk's center (consistent with the point-picking method of the 9 micro-strategies and the reference implementation)"""
     return chunk_x * 16 + 8, chunk_z * 16 + 8
 
 
 def generate_grid_points(chunk_x: int, chunk_z: int,
                          rows: int = 3, cols: int = 3) -> List[Tuple[int, int]]:
     """
-    生成区块内均匀网格坐标
+    Generate uniform grid coordinates inside a chunk
     Args:
-        chunk_x/chunk_z: 区块坐标
-        rows/cols: 网格行列数（默认3x3）
+        chunk_x/chunk_z: chunk coordinates
+        rows/cols: number of grid rows/columns (default 3x3)
     Returns:
-        网格坐标列表，按「探索优先级降序」排列 —— 即离区块中心越近越靠前，
-        首个元素为优先级最高的候选点（符合 base_strategy 的接口约束）
+        list of grid coordinates, ordered by "exploration priority descending" — i.e., the closer to the chunk center, the earlier,
+        the first element is the highest-priority candidate (satisfying base_strategy's interface constraint)
     """
     x0, z0, x1, z1 = chunk_bounds(chunk_x, chunk_z)
     cx, cz = chunk_center(chunk_x, chunk_z)
 
     points = []
-    # 防止 rows=1 或 cols=1 时除以 0
+    # prevent division by 0 when rows=1 or cols=1
     row_div = max(rows - 1, 1)
     col_div = max(cols - 1, 1)
 
@@ -45,12 +45,12 @@ def generate_grid_points(chunk_x: int, chunk_z: int,
             z = z0 + int((z1 - z0) * j / col_div)
             points.append((x, z))
 
-    # 按曼哈顿距离升序排序 => 中心点在前 => 探索优先级降序
+    # sort by Manhattan distance ascending => center point first => exploration priority descending
     points.sort(key=lambda p: abs(p[0] - cx) + abs(p[1] - cz))
     return points
 
 
 def generate_corner_points(chunk_x: int, chunk_z: int) -> List[Tuple[int, int]]:
-    """生成区块四角坐标，按顺时针优先级排列"""
+    """generate the four corner coordinates of a chunk, ordered by clockwise priority"""
     x0, z0, x1, z1 = chunk_bounds(chunk_x, chunk_z)
     return [(x0, z0), (x1, z0), (x1, z1), (x0, z1)]

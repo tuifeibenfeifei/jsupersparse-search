@@ -1,18 +1,18 @@
 """
 run_ablation_stage4.py
-Stage4 超参数微调层消融实验调度脚本
+Stage4 hyperparameter fine-tuning layer ablation experiment scheduler script
 
-【职责】对应 需求.txt 第十四节 run_ablation_stage4.py：
-    读取 stage4_hyperparams/ 下的 YAML（继承前三阶段最优）→ 循环调用
-    main_algorithm 跑 20种子×20次 → 生成 CSV 和【收敛曲线】→ 存入 results/ablation_logs/
+[Responsibility] Corresponds to Req. Sec. 14 run_ablation_stage4.py:
+    Read YAMLs under stage4_hyperparams/ (inheriting the first three stages' optimal) -> loop call
+    main_algorithm runs 20 seeds x 20 times -> generate CSV and [convergence curves] -> save to results/ablation_logs/
 
-【消融变量】需求第八节 Stage4（超参数微调层）：
-    锁定前三阶段最优结构，仅测试【好奇心权重数值】与【查询次数/目标数量】。
+[Ablation variables] Req. Sec. 8 Stage4 (hyperparameter fine-tuning layer):
+    Lock the first three stages' optimal structure; only test [curiosity weight value] and [query count/target count].
 
-【需求第十节专项】query_target_sweep 运行时【必须】输出标准的
-    「查询次数 - 累计发现点数」CSV 数据，用于绘制收敛曲线图。
-    本脚本从 run_experiment 返回的 raw_results[].convergence_data 提取每次运行的
-    收敛轨迹，跨 400 次运行按查询次数分箱聚合平均，得到平滑收敛曲线。
+[Req. Sec. 10 special] query_target_sweep must output a standard
+    "query count - cumulative discovered points" CSV data when run, for plotting convergence curves.
+    This script extracts each run's
+    convergence trajectory from raw_results[].convergence_data returned by run_experiment, binned and averaged across 400 runs by query count to obtain a smooth convergence curve.
 """
 
 import sys
@@ -26,10 +26,10 @@ STAGE4_CONFIG_DIR = C.PROJECT_ROOT / "configs" / "ablation" / "stage4_hyperparam
 
 
 def run_curiosity_weight_sweep(mode: str) -> List[Dict[str, float]]:
-    """好奇心权重扫描 [1,3,5]，label 形如 curiosity_weight=3"""
+    """Curiosity weight sweep [1,3,5], label like curiosity_weight=3"""
     path = STAGE4_CONFIG_DIR / "curiosity_weight_sweep.yaml"
     if not path.exists():
-        print(f"[跳过] 配置文件不存在: {path}")
+        print(f"[SKIP] config file not found: {path}")
         return []
     return C.run_sweep(
         C.load_yaml(path), sweep_field="curiosity_weight_list", mode=mode,
@@ -40,18 +40,18 @@ def run_curiosity_weight_sweep(mode: str) -> List[Dict[str, float]]:
 
 def _aggregate_convergence(raw_results: List[dict], n_bins: int = 100) -> List[Dict]:
     """
-    把多次运行的收敛轨迹聚合成一条平滑曲线。
+    Aggregate convergence trajectories from multiple runs into one smooth curve.
 
-    每次运行的 convergence_data 是 [(query_count, deep_sea_points, stage), ...]。
-    不同运行的查询步点不完全对齐，故按查询次数等宽分箱（n_bins 段），
-    对落在每箱内的 (query_count, deep_sea_points) 取均值，得到跨运行的平均收敛轨迹。
+    Each run's convergence_data is [(query_count, deep_sea_points, stage), ...].
+    Query step points differ across runs, so equal-width binning by query count (n_bins bins),
+    average the (query_count, deep_sea_points) falling in each bin to obtain the cross-run average convergence trajectory.
 
-    Returns: [{"query_count": 箱中心, "deep_sea_points": 平均累计点数}, ...]
+    Returns: [{"query_count": bin center, "deep_sea_points": average cumulative points}, ...]
     """
     if not raw_results:
         return []
 
-    # 收集所有 (query_count, deep_sea_points) 采样点
+    # collect all (query_count, deep_sea_points) samples
     samples: List[tuple] = []
     max_q = 0
     for r in raw_results:
@@ -86,22 +86,22 @@ def _aggregate_convergence(raw_results: List[dict], n_bins: int = 100) -> List[D
 
 def run_query_target_sweep(mode: str):
     """
-    查询预算/目标配对扫描 + 收敛曲线导出（需求第十节专项）。
-    query_budget_list 与 target_list 按索引配对，逐对运行。
-    Returns: (汇总统计列表, 收敛曲线字典 {label: 聚合轨迹})
+    Query budget/target paired sweep + convergence curve export (Req. Sec. 10 special).
+    query_budget_list and target_list are paired by index, run pair by pair.
+    Returns: (summary stats list, convergence curve dict {label: aggregated trajectory})
     """
     path = STAGE4_CONFIG_DIR / "query_target_sweep.yaml"
     if not path.exists():
-        print(f"[跳过] 配置文件不存在: {path}")
+        print(f"[SKIP] config file not found: {path}")
         return [], {}
 
     yaml_config = C.load_yaml(path)
     budgets = yaml_config.get("query_budget_list", [])
     targets = yaml_config.get("target_list", [])
     if not budgets:
-        print("[跳过] query_budget_list 为空")
+        print("[SKIP] query_budget_list is empty")
         return [], {}
-    # 目标列表缺省或长度不符时，统一以 40 为默认目标（需求第十三节）
+    # When target list is missing or length mismatches, uniformly use 40 as default target (Req. Sec. 13)
     if len(targets) != len(budgets):
         targets = [40] * len(budgets)
 
@@ -116,29 +116,30 @@ def run_query_target_sweep(mode: str):
         label = f"budget={budget}"
         stats = C.run_single_config(config, label=label, stage_title="Stage4")
         results.append(stats)
-        # 从原始结果提取并聚合收敛曲线（需求第十节）
+        # extract and aggregate convergence curves from raw results (Req. Sec. 10)
         curves[label] = _aggregate_convergence(stats.get("raw_results", []))
 
     return results, curves
 
 
 def main():
+    C.require_real_cubiomes()   # refuse to run on Mock (missing cubiomes.dll)
     args = C.make_arg_parser(
-        "Stage4 超参数微调层消融实验调度脚本",
+        "Stage4 hyperparameter fine-tuning layer ablation experiment scheduler script",
         part_choices=["all", "curiosity", "budget"],
     ).parse_args()
     mode = args.mode
 
     C.print_stage_banner(
-        "Stage4 超参数微调层消融实验", mode,
-        "好奇心权重 [1,3,5] + 查询预算扫描(收敛曲线)，继承前三阶段最优",
+        "Stage4 hyperparameter fine-tuning layer ablation experiment", mode,
+        "Curiosity weight [1,3,5] + query budget sweep (convergence curves), inheriting first three stages' optimal",
     )
 
     curiosity_results: List[Dict[str, float]] = []
     budget_results: List[Dict[str, float]] = []
     curves: Dict[str, List[Dict]] = {}
 
-    # 1. 好奇心权重扫描
+    # 1. Curiosity weight sweep
     if args.part in ("all", "curiosity"):
         curiosity_results = run_curiosity_weight_sweep(mode)
         if curiosity_results:
@@ -146,7 +147,7 @@ def main():
             C.plot_comparison(curiosity_results, "stage4_curiosity_comparison.png",
                               "Stage4: Curiosity Weight Sweep [1,3,5]")
 
-    # 2. 查询预算扫描 + 收敛曲线（需求第十节）
+    # 2. Query budget sweep + convergence curves (Req. Sec. 10)
     if args.part in ("all", "budget"):
         budget_results, curves = run_query_target_sweep(mode)
         if budget_results:
@@ -154,20 +155,20 @@ def main():
             C.plot_comparison(budget_results, "stage4_budget_comparison.png",
                               "Stage4: Query Budget Sweep")
         if curves:
-            # 需求第十节：标准的「查询次数-累计发现点数」CSV + 收敛曲线图
+            # Req. Sec. 10: standard "query count - cumulative discovered points" CSV + convergence curve figure
             C.save_convergence_csv(curves, "stage4_convergence.csv")
             C.plot_convergence_curves(curves, "stage4_convergence_curves.png",
                                       "Stage4: Convergence Curves (Query Count vs Deep Sea Points)")
 
-    # 3. 合并汇总（需求第十四节：stage4_summary.csv）
+    # 3. Merge summary (Req. Sec. 14: stage4_summary.csv)
     all_results = curiosity_results + budget_results
     if all_results:
         C.save_csv(all_results, "stage4_summary.csv")
         C.print_summary(all_results, "Stage4",
-                        next_hint="下一步：依据本表与收敛曲线确定最终超参数，"
-                                  "将 Stage1~4 全部最优组合填入 configs/final_model.yaml")
+                        next_hint="Next: determine final hyperparameters based on this table and convergence curves, "
+                                  "fill all optimal Stage1~4 combinations into configs/final_model.yaml")
     else:
-        print("\n[失败] 未找到任何有效配置，请检查 configs/ablation/stage4_hyperparams/")
+        print("\n[FAIL] No valid config found; please check configs/ablation/stage4_hyperparams/")
         sys.exit(1)
 
 

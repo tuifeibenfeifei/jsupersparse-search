@@ -1,19 +1,19 @@
 # ==============================================================================
-# 文件: go_explore.yaml
-# 描述: Go-Explore 基线算法参数配置
-# 说明: 基线算法独立于主框架（只依赖 L0），本文件为其唯一数值来源。
-#       与主框架共享的全局限制（预算/目标/半径/间距阈值）与主框架对齐。
+# file: go_explore.yaml
+# description: Go-Explore baseline algorithm parameter config
+# note: the baseline algorithm is independent of the main framework (depends only on L0); this file is its sole numerical source.
+#       global limits shared with the main framework (budget / target / radius / spacing threshold) are aligned with it.
 # ==============================================================================
 
-# --- 与主框架对齐的全局限制 ---
+# --- global limits aligned with the main framework ---
 search_radius: 10000
 max_queries_per_episode: 10000
 target_deep_sea_points: 40
 deep_sea_distance_threshold: 416
 temperature_enabled: true
 
-# --- Go-Explore 专属参数 ---
-# go_explore_return_prob: 每步回退到档案（archive）中高价值单元的概率
+# --- Go-Explore-specific parameters ---
+# go_explore_return_prob: probability per step of returning to a high-value cell in the archive
 go_explore_return_prob: 0.15
-# go_explore_expand_step: 深海点邻域扩展步长（区块）
+# go_explore_expand_step: neighborhood-expansion step size around deep-sea points (chunks)
 go_explore_expand_step: 2

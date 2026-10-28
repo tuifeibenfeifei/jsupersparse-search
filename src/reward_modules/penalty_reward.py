@@ -1,35 +1,35 @@
 
 """
 penalty_reward.py
-[奖励] 惩罚奖励模块
-核心职责：对越界行为和重复访问施加负奖励（惩罚）
-通过 config 中的布尔开关控制是否生效，惩罚数值由 YAML 注入
-严禁在此文件中硬编码任何惩罚数值
+[Reward] Penalty reward module
+Core responsibility: apply negative reward (penalty) for out-of-bounds actions and repeated visits
+Controlled on/off via boolean switch in config; penalty values are injected from YAML
+Strictly prohibited from hardcoding any penalty values in this file
 """
 
 from typing import Optional
 
 
 class PenaltyReward:
-    """惩罚奖励计算器
+    """Penalty reward calculator
 
-    施加两类惩罚：
-        1. 越界惩罚：当 AI 的下一步坐标超出搜索范围（半径 10000 格的正方形区域）时触发
-        2. 重复访问惩罚：当 AI 重复查询已访问过的区块坐标时触发
+    Applies two types of penalties:
+        1. Out-of-bounds penalty: triggered when the AI's next-step coordinates exceed the search area (square region of radius 10000 cells)
+        2. Repeated visit penalty: triggered when the AI repeatedly queries already-visited chunk coordinates
 
-    惩罚信号驱动 AI 避免无效移动，保持在有效搜索区域内。
+    Penalty signals drive the AI to avoid invalid moves and stay within the valid search area.
 
-    消融实验控制：
-        config["penalty_enabled"] = False  → 关闭所有惩罚（Stage3 reward_no_penalty 场景）
+    Ablation experiment control:
+        config["penalty_enabled"] = False  → disable all penalties (Stage3 reward_no_penalty scenario)
     """
 
     def __init__(self, config: Optional[dict] = None, **kwargs):
         """
         Args:
-            config: 配置字典，支持以下键：
-                - enabled (bool): 是否启用惩罚，默认 True
-                - out_of_bounds (float): 越界惩罚值（负数），默认 -10.0
-                - repeated_visit (float): 重复访问惩罚值（负数），默认 -5.0
+            config: Configuration dict, supporting the following keys:
+                - enabled (bool): whether to enable penalties, default True
+                - out_of_bounds (float): out-of-bounds penalty value (negative), default -10.0
+                - repeated_visit (float): repeated visit penalty value (negative), default -5.0
         """
         config = config or {}
         self._enabled = config.get("enabled", True)
@@ -38,15 +38,15 @@ class PenaltyReward:
 
     def calculate(self, is_out_of_bounds: bool = False, is_repeated_visit: bool = False) -> float:
         """
-        计算惩罚值（可叠加）
+        Calculate penalty value (stackable)
 
         Args:
-            is_out_of_bounds: 是否超出搜索范围（半径 10000 格的正方形区域）
-            is_repeated_visit: 是否重复访问已查询过的区块坐标
+            is_out_of_bounds: whether the search area is exceeded (square region of radius 10000 cells)
+            is_repeated_visit: whether already-queried chunk coordinates are revisited
 
         Returns:
-            惩罚总值（float）。未启用时返回 0.0
-            若两项惩罚同时触发，则总惩罚 = out_of_bounds + repeated_visit
+            Total penalty value (float). Returns 0.0 when disabled
+            If both penalties trigger simultaneously, total penalty = out_of_bounds + repeated_visit
         """
         if not self._enabled:
             return 0.0

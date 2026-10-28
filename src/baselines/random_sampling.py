@@ -1,15 +1,15 @@
 """
 random_sampling.py
-[Random 基线] 纯随机采样：在搜索范围内随机抽取区块进行查询。
+[Random baseline] pure random sampling: randomly pick chunks within the search range and query them.
 
-需求.txt 第十一节 L4：
-    · 独立算法，不依赖 main_algorithm.py / L1 策略 / 奖励模块
-    · 只依赖 L0（cubiomes_wrapper + database）
-    · 返回格式与 main_algorithm.run_single_episode() 保持一致
+Req. Sec. 11, L4:
+    · standalone algorithm, does not depend on main_algorithm.py / L1 strategy / reward modules
+    · depends only on L0 (cubiomes_wrapper + database)
+    · return format is identical to main_algorithm.run_single_episode()
 
-与主框架的差异（作为"无先验"对照）：
-    · 无任何空间连续性 / 温度导向 / 学习信号，每次跳跃独立随机
-    · 每区块固定查询中心点（温度探针 + 深海判定各 1 次，共 2 次黑盒查询）
+Differences from the main framework (as a "no-prior" control):
+    · no spatial continuity / temperature guidance / learning signal; each jump is independently random
+    · each chunk fixes its center-point query (one temperature probe + one deep-sea determination, 2 black-box queries total)
 """
 
 import random
@@ -20,15 +20,15 @@ from ._common import make_env, within_radius, query_chunk_center, build_result
 
 def run_random_sampling(config: dict, seed: int) -> dict:
     """
-    执行一次纯随机采样基线 episode。
+    Run one pure random-sampling baseline episode.
 
     Args:
-        config: 配置字典，读取 search_radius / max_queries_per_episode /
+        config: config dict; reads search_radius / max_queries_per_episode /
                 target_deep_sea_points / deep_sea_distance_threshold / temperature_enabled
-        seed: 世界种子；算法随机性由 config["algo_seed"]（缺省取 seed）驱动，
-              保证同一世界种子的多次重复结果不同（分离环境/算法随机性）
+        seed: world seed; algorithm randomness is driven by config["algo_seed"] (defaults to seed),
+              ensuring that repeated runs with the same world seed differ (separating environment / algorithm randomness)
     Returns:
-        结果字典（格式与 run_single_episode 一致）
+        result dict (format identical to run_single_episode)
     """
     wrapper, db = make_env(config, seed)
     radius = int(config.get("search_radius", 10000))
@@ -47,14 +47,14 @@ def run_random_sampling(config: dict, seed: int) -> dict:
     temperature_probes = 0
 
     while wrapper.query_count < max_queries and len(db) < target:
-        # 随机抽取一个未访问区块（重试次数封顶，防止极端情况下死循环）
+        # randomly pick an unvisited chunk (cap retries to prevent an infinite loop in extreme cases)
         for _ in range(64):
             cx = rng.randint(-max_chunk, max_chunk)
             cz = rng.randint(-max_chunk, max_chunk)
             if (cx, cz) not in visited:
                 break
         if (cx, cz) in visited:
-            break   # 64 次重试仍无新区块（几乎不可能），视为已扫尽
+            break   # after 64 retries still no new chunk (almost impossible), treat as fully swept
 
         visited.add((cx, cz))
         if not within_radius(cx, cz, radius):

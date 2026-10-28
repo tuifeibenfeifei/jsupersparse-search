@@ -1,25 +1,25 @@
 """
 run_stages_parallel.py
-并行完整跑完 Stage1~4 全部消融实验（等价于依次运行 run_ablation_stage1~4.py，
-但以"一个配置 = 一个子进程"的方式并行调度，大幅缩短总耗时）。
+Run all Stage1~4 ablation experiments in parallel to completion (equivalent to running run_ablation_stage1~4.py in sequence,
+but scheduled in parallel as "one config = one subprocess", greatly reducing total wall time).
 
-【设计】
-    · 31 个配置 job（Stage1: 2温度 + 9策略 / Stage2: 5遍历 + 4阈值 /
-      Stage3: 4奖励 / Stage4: 3权重 + 4预算），每个 job = 20 种子 × 20 次 = 400 次运行
-    · job 构建逻辑与各 stage 脚本完全一致（同一 YAML、同一 label、同一注入键）
-    · 以 N 个并发子进程执行（--workers，默认 12），单个 job 崩溃不影响其他 job
-    · 全部完成后，按各 stage 脚本的命名与绘图逻辑重建输出文件
-      （stageX_*.csv / stageX_*.png / stageX_summary.csv），与串行跑完全等价
+[Design]
+    - 31 config jobs (Stage1: 2 temperatures + 9 strategies / Stage2: 5 sweeps + 4 thresholds /
+      Stage3: 4 rewards / Stage4: 3 weights + 4 budgets); each job = 20 seeds x 20 repeats = 400 runs
+    - job construction logic is identical to each stage script (same YAML, same label, same injection key)
+    - run with N concurrent subprocesses (--workers, default 12); a single job crashing does not affect others
+    - after all complete, rebuild the output files according to each stage script's naming and plotting logic
+      (stageX_*.csv / stageX_*.png / stageX_summary.csv), fully equivalent to running serially
 
-【命令行】
-    --workers N    并发子进程数（默认 12；机器 16 线程，建议 8~14）
-    --python CMD   Python 解释器命令（默认 "py -3.9"）
-    --outdir DIR   中间产物与日志目录（默认 results/parallel_jobs/）
-    --stage all|1|2|3|4   只跑指定 stage（默认 all）
+[Command line]
+    --workers N    number of concurrent subprocesses (default 12; the machine has 16 threads, recommended 8~14)
+    --python CMD   Python interpreter command (default "py -3.9")
+    --outdir DIR   directory for intermediate artifacts and logs (default results/parallel_jobs/)
+    --stage all|1|2|3|4   run only the given stage (default all)
 
-【进度查看】
-    outdir/progress.txt —— 实时进度（已完成/总数、运行中 job、失败 job）
-    outdir/job_<i>.log   —— 每个 job 的运行日志
+[Viewing progress]
+    outdir/progress.txt -- live progress (done/total, running jobs, failed jobs)
+    outdir/job_<i>.log   -- run log for each job
 """
 
 import sys
@@ -41,20 +41,20 @@ import _ablation_common as C
 WORKER = Path(__file__).resolve().parent / "_parallel_worker.py"
 ABLATION_DIR = PROJECT_ROOT / "configs" / "ablation"
 
-# Stage3 的 4 个奖励配置（与 run_ablation_stage3.py 的 REWARD_CONFIGS 一致）
+# the 4 Stage3 reward configs (identical to REWARD_CONFIGS in run_ablation_stage3.py)
 STAGE3_REWARD_CONFIGS = [
-    ("reward_all_on", "all_on(全开对照)"),
-    ("reward_no_deep", "no_deep(关深海)"),
-    ("reward_no_curiosity", "no_curiosity(关好奇)"),
-    ("reward_no_penalty", "no_penalty(关惩罚)"),
+    ("reward_all_on", "all_on (all-on control)"),
+    ("reward_no_deep", "no_deep (deep-sea off)"),
+    ("reward_no_curiosity", "no_curiosity (curiosity off)"),
+    ("reward_no_penalty", "no_penalty (penalty off)"),
 ]
 
-# 各 stage 输出文件重建信息：分组 -> (输出文件名列表, 绘图信息)
-# 绘图信息: (png 文件名, 标题)
+# output-file rebuild info per stage: group -> (output filename list, plot info)
+# plot info: (png filename, title)
 
 
 def build_jobs(only_stage: Optional[str] = None) -> List[dict]:
-    """构建全部 job（与各 stage 脚本完全相同的配置构造逻辑）"""
+    """Build all jobs (config-construction logic identical to each stage script)."""
     jobs: List[dict] = []
 
     def add(group, yaml_rel, overrides, label, need_curve=False, pop_fields=()):
@@ -70,13 +70,13 @@ def build_jobs(only_stage: Optional[str] = None) -> List[dict]:
             "need_curve": need_curve,
         })
 
-    # ---------------- Stage1 感知层 ----------------
+    # ---------------- Stage1 perception layer ----------------
     if only_stage in (None, "1"):
-        # 温度 on/off（pop 掉扫描列表键，与原脚本一致）
+        # temperature on/off (pop the sweep-list key, same as the original script)
         for name in ["temp_on", "temp_off"]:
             add("stage1_temp", f"stage1_perception/{name}.yaml",
                 {}, name, pop_fields=("micro_strategy_list",))
-        # 9 种微观策略扫描
+        # sweep over 9 micro-strategies
         sweep = C.load_yaml(ABLATION_DIR / "stage1_perception/sampling_sweep.yaml")
         shared = {k: v for k, v in sweep.items() if k != "micro_strategy_list"}
         for s in sweep.get("micro_strategy_list", []):
@@ -84,7 +84,7 @@ def build_jobs(only_stage: Optional[str] = None) -> List[dict]:
                          "config": {**shared, "micro_strategy": s},
                          "label": s, "need_curve": False})
 
-    # ---------------- Stage2 移动层 ----------------
+    # ---------------- Stage2 movement layer ----------------
     if only_stage in (None, "2"):
         sweep = C.load_yaml(ABLATION_DIR / "stage2_movement/finder_sweep.yaml")
         shared = {k: v for k, v in sweep.items() if k != "chunk_finder_list"}
@@ -100,12 +100,12 @@ def build_jobs(only_stage: Optional[str] = None) -> List[dict]:
                          "config": {**shared, "deep_sea_distance_threshold": t},
                          "label": f"threshold={t}", "need_curve": False})
 
-    # ---------------- Stage3 奖励层 ----------------
+    # ---------------- Stage3 reward layer ----------------
     if only_stage in (None, "3"):
         for cfg_name, label in STAGE3_REWARD_CONFIGS:
             add("stage3_reward", f"stage3_reward/{cfg_name}.yaml", {}, label)
 
-    # ---------------- Stage4 超参数层 ----------------
+    # ---------------- Stage4 hyperparameter layer ----------------
     if only_stage in (None, "4"):
         sweep = C.load_yaml(ABLATION_DIR / "stage4_hyperparams/curiosity_weight_sweep.yaml")
         shared = {k: v for k, v in sweep.items() if k != "curiosity_weight_list"}
@@ -131,7 +131,7 @@ def build_jobs(only_stage: Optional[str] = None) -> List[dict]:
 
 
 def run_jobs(jobs: List[dict], outdir: Path, workers: int, py_cmd: str) -> tuple:
-    """以 workers 个并发子进程执行全部 job，返回 (完成索引集合, 失败索引列表)"""
+    """Run all jobs with workers concurrent subprocesses; return (set of done indices, list of failed indices)."""
     pending = list(range(len(jobs)))
     running: Dict[int, subprocess.Popen] = {}
     done: set = set()
@@ -140,19 +140,19 @@ def run_jobs(jobs: List[dict], outdir: Path, workers: int, py_cmd: str) -> tuple
     last_progress_write = 0.0
 
     with open(progress, "w", encoding="utf-8") as pf:
-        pf.write(f"共 {len(jobs)} 个配置 job，并发 {workers} 个\n")
+        pf.write(f"{len(jobs)} config jobs total, {workers} concurrent\n")
 
     while pending or running:
-        # 启动新 job（水位控制；已有结果的 job 直接跳过 = 续跑/断点恢复）
+        # launch new jobs (water-level control; jobs with existing results are skipped = resume / checkpoint recovery)
         while len(running) < workers and pending:
             idx = pending.pop(0)
             if (outdir / f"job_{idx}.pkl").exists():
                 done.add(idx)
-                print(f"[调度] job {idx} ({jobs[idx]['label']}) 已有结果，跳过", flush=True)
+                print(f"[schedule] job {idx} ({jobs[idx]['label']}) already has results, skipping", flush=True)
                 continue
             log_path = outdir / f"job_{idx}.log"
             log_file = open(log_path, "a", encoding="utf-8")
-            print(f"[调度] 启动 job {idx} ({jobs[idx]['label']})", flush=True)
+            print(f"[schedule] launching job {idx} ({jobs[idx]['label']})", flush=True)
             running[idx] = subprocess.Popen(
                 [py_cmd, str(WORKER), "--manifest", str(outdir / "manifest.pkl"),
                  "--job-idx", str(idx), "--outdir", str(outdir)],
@@ -160,7 +160,7 @@ def run_jobs(jobs: List[dict], outdir: Path, workers: int, py_cmd: str) -> tuple
                 stdout=log_file, stderr=subprocess.STDOUT,
             )
 
-        # 轮询完成情况
+        # poll for completion
         finished = [i for i, p in running.items() if p.poll() is not None]
         for i in finished:
             rc = running.pop(i).returncode
@@ -168,31 +168,31 @@ def run_jobs(jobs: List[dict], outdir: Path, workers: int, py_cmd: str) -> tuple
                 done.add(i)
             else:
                 failed.append(i)
-                print(f"[调度] job {i} ({jobs[i]['label']}) 失败，退出码 {rc}", flush=True)
+                print(f"[schedule] job {i} ({jobs[i]['label']}) failed, exit code {rc}", flush=True)
 
-        # 每 ~30 秒写一次进度
+        # write progress every ~30 seconds
         now = time.time()
         if now - last_progress_write > 30:
             last_progress_write = now
             running_labels = [f"{i}:{jobs[i]['label']}" for i in running]
             with open(progress, "w", encoding="utf-8") as pf:
-                pf.write(f"[{time.strftime('%H:%M:%S')}] 完成 {len(done)}/{len(jobs)} | "
-                         f"失败 {len(failed)} | 运行中 {len(running)} 个\n")
+                pf.write(f"[{time.strftime('%H:%M:%S')}] done {len(done)}/{len(jobs)} | "
+                         f"failed {len(failed)} | running {len(running)}\n")
                 if running_labels:
-                    pf.write("运行中: " + ", ".join(running_labels) + "\n")
+                    pf.write("running: " + ", ".join(running_labels) + "\n")
                 if failed:
-                    pf.write("失败: " + ", ".join(str(i) for i in failed) + "\n")
+                    pf.write("failed: " + ", ".join(str(i) for i in failed) + "\n")
 
         if not finished:
             time.sleep(10)
 
     with open(progress, "a", encoding="utf-8") as pf:
-        pf.write(f"\n全部结束：完成 {len(done)}/{len(jobs)}，失败 {len(failed)}\n")
+        pf.write(f"\nAll finished: done {len(done)}/{len(jobs)}, failed {len(failed)}\n")
     return done, failed
 
 
 def consolidate(jobs: List[dict], outdir: Path, done: set, failed: List[int]):
-    """重建与串行脚本完全一致的输出文件（CSV + PNG + 汇总表）"""
+    """Rebuild output files identical to the serial scripts (CSV + PNG + summary table)."""
     from collections import defaultdict
     results: Dict[str, List[dict]] = defaultdict(list)
     curves: Dict[str, list] = {}
@@ -200,7 +200,7 @@ def consolidate(jobs: List[dict], outdir: Path, done: set, failed: List[int]):
     for i, job in enumerate(jobs):
         pkl = outdir / f"job_{i}.pkl"
         if not pkl.exists():
-            print(f"[重建] 跳过缺失 job {i} ({job['label']})", flush=True)
+            print(f"[rebuild] skipping missing job {i} ({job['label']})", flush=True)
             continue
         with open(pkl, "rb") as f:
             data = pickle.load(f)
@@ -264,52 +264,52 @@ def consolidate(jobs: List[dict], outdir: Path, done: set, failed: List[int]):
         C.print_summary(results["stage4_curiosity"] + results["stage4_budget"], "Stage4")
 
     if failed:
-        print(f"\n⚠️ 有 {len(failed)} 个 job 失败: "
+        print(f"\n[!] {len(failed)} jobs failed: "
               + ", ".join(f"job{i}({jobs[i]['label']})" for i in failed))
-        print("  可查看 outdir/job_<i>.err 与 job_<i>.log 定位原因，重跑对应 job。")
+        print("  Check outdir/job_<i>.err and job_<i>.log to find the cause and rerun the corresponding job.")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="并行完整跑完 Stage1~4 消融实验")
+    parser = argparse.ArgumentParser(description="Run all Stage1~4 ablation experiments in parallel")
     parser.add_argument("--workers", type=int, default=12,
-                        help="并发子进程数（默认 12）")
+                        help="number of concurrent subprocesses (default 12)")
     parser.add_argument("--python", default="",
-                        help="Python 解释器命令（默认使用当前解释器绝对路径）")
+                        help="Python interpreter command (default: the absolute path of the current interpreter)")
     parser.add_argument("--outdir", default=str(PROJECT_ROOT / "results" / "parallel_jobs"),
-                        help="中间产物/日志目录（默认 results/parallel_jobs/）")
+                        help="directory for intermediate artifacts/logs (default results/parallel_jobs/)")
     parser.add_argument("--stage", choices=["all", "1", "2", "3", "4"], default="all",
-                        help="只跑指定 stage（默认 all）")
+                        help="run only the given stage (default all)")
     args = parser.parse_args()
 
     outdir = Path(args.outdir)
     outdir.mkdir(parents=True, exist_ok=True)
     only_stage = None if args.stage == "all" else args.stage
-    py_cmd = args.python or sys.executable   # 默认用当前解释器绝对路径，避免 PATH 解析失败
+    py_cmd = args.python or sys.executable   # default to the absolute path of the current interpreter to avoid PATH lookup failures
 
     jobs = build_jobs(only_stage)
     if not jobs:
-        print("[失败] 未构建出任何 job，请检查 configs/ablation/")
+        print("[fail] no jobs were built, please check configs/ablation/")
         sys.exit(1)
 
     print("=" * 74)
-    print("  并行消融实验调度器（Stage1~4 完整跑完）")
+    print("  Parallel ablation experiment scheduler (runs Stage1~4 to completion)")
     print("=" * 74)
-    print(f"  配置 job 总数: {len(jobs)}（每个 = 20 种子 × 20 次 = 400 次运行）")
-    print(f"  并发子进程 : {args.workers} | Python: {py_cmd}")
-    print(f"  输出目录   : {outdir}")
+    print(f"  Total config jobs: {len(jobs)} (each = 20 seeds x 20 repeats = 400 runs)")
+    print(f"  Concurrent subprocesses: {args.workers} | Python: {py_cmd}")
+    print(f"  Output directory: {outdir}")
     print("=" * 74)
     for i, j in enumerate(jobs):
         print(f"    job {i:>2} [{j['group']:<16}] {j['label']}")
 
-    # 写 manifest 供 worker 读取
+    # write the manifest for the worker to read
     with open(outdir / "manifest.pkl", "wb") as f:
         pickle.dump(jobs, f)
 
     done, failed = run_jobs(jobs, outdir, args.workers, py_cmd)
     consolidate(jobs, outdir, done, failed)
 
-    print("\n[完成] 并行消融实验全部结束。"
-          "结果文件位于 results/ablation_logs/（与串行脚本输出一致）。")
+    print("\n[done] All parallel ablation experiments finished."
+          "Result files are in results/ablation_logs/ (same as the serial scripts' output).")
 
 
 if __name__ == "__main__":

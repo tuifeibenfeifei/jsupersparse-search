@@ -1,5 +1,5 @@
 # src/traversal_strategies/any_three_corners.py
-"""[微观] 策略6：随机挑3个角查"""
+"""Micro strategy 6: query three randomly chosen corners."""
 import random
 from typing import List, Tuple
 from .base_strategy import BaseStrategy
@@ -7,7 +7,7 @@ from ._utils import generate_corner_points
 
 
 class AnyThreeCornersStrategy(BaseStrategy):
-    """随机三角采样：从区块四个角中随机选取3个进行查询"""
+    """Random three-corner sampling: pick 3 of the 4 chunk corners at random."""
 
     def __init__(self, seed: int = None, **kwargs):
         super().__init__(**kwargs)

@@ -1,15 +1,15 @@
 """
 bfs.py
-[BFS 基线] 广度优先搜索：从出生点 (0,0) 出发，按 8 邻域逐环向外系统扫描。
+[BFS baseline] breadth-first search: starting from the spawn point (0,0), systematically scan outward ring by ring along the 8-neighborhood.
 
-需求.txt 第十一节 L4：
-    · 独立算法，不依赖 main_algorithm.py / L1 策略 / 奖励模块
-    · 只依赖 L0（cubiomes_wrapper + database）
-    · 返回格式与 main_algorithm.run_single_episode() 保持一致
+Req. Sec. 11, L4:
+    · standalone algorithm, does not depend on main_algorithm.py / L1 strategy / reward modules
+    · depends only on L0 (cubiomes_wrapper + database)
+    · return format is identical to main_algorithm.run_single_episode()
 
-与主框架的差异（作为"无智能"对照）：
-    · 无温度导向、无 Q-learning、无奖励信号，纯几何覆盖
-    · 每区块固定查询中心点（温度探针 + 深海判定各 1 次，共 2 次黑盒查询）
+Differences from the main framework (as a "no-intelligence" control):
+    · no temperature guidance, no Q-learning, no reward signal; pure geometric coverage
+    · each chunk fixes its center-point query (one temperature probe + one deep-sea determination, 2 black-box queries total)
 """
 
 from collections import deque
@@ -21,14 +21,14 @@ from ._common import (make_env, within_radius, query_chunk_center,
 
 def run_bfs(config: dict, seed: int) -> dict:
     """
-    执行一次 BFS 基线 episode。
+    Run one BFS baseline episode.
 
     Args:
-        config: 配置字典，读取 search_radius / max_queries_per_episode /
+        config: config dict; reads search_radius / max_queries_per_episode /
                 target_deep_sea_points / deep_sea_distance_threshold / temperature_enabled
-        seed: 世界种子（cubiomes 地形种子）
+        seed: world seed (cubiomes terrain seed)
     Returns:
-        结果字典（格式与 run_single_episode 一致）
+        result dict (format identical to run_single_episode)
     """
     wrapper, db = make_env(config, seed)
     radius = int(config.get("search_radius", 10000))
@@ -62,7 +62,7 @@ def run_bfs(config: dict, seed: int) -> dict:
             "stage": 1,
         })
 
-        # 8 邻域入队（广度优先：先扫完近处再向外扩散）
+        # enqueue the 8-neighborhood (breadth-first: finish nearby cells before expanding outward)
         for dx, dz in DIRECTION_DELTAS:
             nx, nz = cx + dx, cz + dz
             if (nx, nz) not in visited:

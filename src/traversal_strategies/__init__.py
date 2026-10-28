@@ -1,4 +1,4 @@
-"""traversal_strategies/__init__.py - 遍历策略插件包"""
+"""traversal_strategies/__init__.py - traversal strategy plugin package."""
 from .base_strategy import BaseStrategy
 from .center_point import CenterPointStrategy as CenterPoint
 from .corner_points import CornerPointsStrategy as CornerPoints

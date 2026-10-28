@@ -1,4 +1,4 @@
-"""chunk_finders/__init__.py - 区块搜索策略插件包"""
+"""chunk_finders/__init__.py - chunk search strategy plugin package."""
 from .base_finder import BaseFinder
 from .adaptive_scan import AdaptiveScanFinder
 from .ray_scan import RayScanFinder

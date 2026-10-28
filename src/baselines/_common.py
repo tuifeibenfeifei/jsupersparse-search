@@ -1,19 +1,19 @@
 """
 _baselines_common.py
-基线算法公共工具（仅依赖 L0 基础设施层：cubiomes_wrapper / database）
+Baseline algorithm common utilities (depends only on L0 infrastructure layer: cubiomes_wrapper / database)
 
-需求.txt 第十一节 L4 关键约束：
-    · 基线算法独立于 main_algorithm.py，不依赖 L2/L1，只依赖 L0
-    · 每个算法有自己的独立执行循环
-    · 返回格式与 main_algorithm.run_single_episode() 的结果字典保持一致，
-      便于 scripts/run_baselines.py 统一聚合与绘图
+Req. Sec. 11 L4 key constraints:
+    - Baseline algorithms are independent of main_algorithm.py, do not depend on L2/L1, only on L0
+    - Each algorithm has its own independent execution loop
+    - Return format is consistent with main_algorithm.run_single_episode() result dict,
+      so scripts/run_baselines.py can uniformly aggregate and plot
 
-本模块提供：
-    · make_env()            构造环境（CubiomesWrapper + DeepSeaDatabase）
-    · query_chunk_center()  对单个区块执行一次标准查询（温度探针 + 深海判定，
-                            每区块 2 次黑盒查询，与主框架 center_point 微观策略口径一致）
-    · build_result()        构造与 run_single_episode 同构的结果字典
-    · MLP                   numpy 实现的轻量两层网络（供 ICM / RND 内在奖励使用）
+This module provides:
+    - make_env()            construct environment (CubiomesWrapper + DeepSeaDatabase)
+    - query_chunk_center()  perform one standard query on a single chunk (temperature probe + deep-sea determination,
+                            2 black-box queries per chunk, consistent with the main framework's center_point micro-strategy)
+    - build_result()        construct a result dict isomorphic to run_single_episode
+    - MLP                   lightweight two-layer network in numpy (for ICM / RND intrinsic reward)
 """
 
 import numpy as np
@@ -22,7 +22,7 @@ from typing import List, Tuple, Optional
 from ..cubiomes_wrapper import CubiomesWrapper
 from ..database import DeepSeaDatabase
 
-# 8 方向位移表，与主框架 _DIRECTION_DELTAS 保持一致
+# 8-direction displacement table, consistent with main framework _DIRECTION_DELTAS
 DIRECTION_DELTAS: List[Tuple[int, int]] = [
     (1, 0), (1, -1), (0, -1), (-1, -1),
     (-1, 0), (-1, 1), (0, 1), (1, 1),
@@ -30,19 +30,19 @@ DIRECTION_DELTAS: List[Tuple[int, int]] = [
 
 
 def make_env(config: dict, seed: int) -> Tuple[CubiomesWrapper, DeepSeaDatabase]:
-    """构造黑盒环境与数据库（基线只用 L0）"""
+    """Construct black-box environment and database (baselines use only L0)"""
     wrapper = CubiomesWrapper(seed=seed)
     db = DeepSeaDatabase(config.get("deep_sea_distance_threshold", 416))
     return wrapper, db
 
 
 def chunk_center(cx: int, cz: int) -> Tuple[int, int]:
-    """区块中心世界坐标（与主框架 center_point 微观策略取点一致）"""
+    """World coordinates of chunk center (consistent with main framework center_point micro-strategy sampling)"""
     return cx * 16 + 8, cz * 16 + 8
 
 
 def within_radius(cx: int, cz: int, radius: int) -> bool:
-    """区块是否在搜索范围内（半径 10000 格的正方形区域）"""
+    """Whether a chunk is within search range (square region of radius 10000 cells)"""
     return abs(cx * 16) <= radius and abs(cz * 16) <= radius
 
 
@@ -52,10 +52,10 @@ def query_chunk_center(wrapper: CubiomesWrapper, db: DeepSeaDatabase,
                        temperature_samples: Optional[List] = None,
                        temperature_enabled: bool = True):
     """
-    对区块 (cx, cz) 执行标准查询：
-        1. 查询区块中心温度（1 次查询，计入预算）
-        2. 判定区块中心是否深海（1 次查询，计入预算）
-        3. 若命中深海，写入数据库（含间距阈值去重），返回是否为新有效点
+    Perform a standard query on chunk (cx, cz):
+        1. Query chunk center temperature (1 query, counted in budget)
+        2. Determine whether chunk center is deep-sea (1 query, counted in budget)
+        3. If deep-sea hit, write to database (with spacing threshold dedup), return whether it is a new valid point
 
     Returns:
         (is_deep, temp, is_new_valid_point)
@@ -89,8 +89,8 @@ def build_result(seed: int, wrapper: CubiomesWrapper, db: DeepSeaDatabase,
                  visited_chunks: int = 0,
                  temperature_probes: int = 0) -> dict:
     """
-    构造与 main_algorithm.run_single_episode() 同构的结果字典，
-    使 run_baselines.py 可以复用统一的聚合/绘图逻辑。
+    Construct a result dict isomorphic to main_algorithm.run_single_episode(),
+    so run_baselines.py can reuse the unified aggregation/plotting logic.
     """
     temperature_history = temperature_history or []
     temperature_samples = temperature_samples or []
@@ -100,7 +100,7 @@ def build_result(seed: int, wrapper: CubiomesWrapper, db: DeepSeaDatabase,
         "total_queries": wrapper.query_count,
         "deep_sea_points_found": len(db),
         "deep_sea_points": points,
-        "final_stage": 1,          # 基线为单一算法，无三阶段概念，固定记为 1
+        "final_stage": 1,          # baselines are a single algorithm, no three-stage concept, fixed as 1
         "epsilon": None,
         "convergence_data": convergence_data,
         "temperature_history": list(temperature_history),
@@ -117,10 +117,10 @@ def build_result(seed: int, wrapper: CubiomesWrapper, db: DeepSeaDatabase,
 
 class MLP:
     """
-    轻量两层全连接网络（numpy 实现，SGD 训练）。
+    Lightweight two-layer fully connected network (numpy implementation, SGD training).
 
-    仅供 ICM（前向模型误差）与 RND（预测器 vs 固定目标网络）两类
-    内在好奇心奖励计算使用，不依赖 torch/tf，保证零额外依赖。
+    Used only for ICM (forward model error) and RND (predictor vs fixed target network) intrinsic
+    curiosity reward computation; does not depend on torch/tf, ensuring zero extra dependencies.
     """
 
     def __init__(self, in_dim: int, hidden: int, out_dim: int,
@@ -133,17 +133,17 @@ class MLP:
         self.lr = float(lr)
 
     def _forward(self, x: np.ndarray):
-        h = np.maximum(0.0, x @ self.W1 + self.b1)   # ReLU 隐层
+        h = np.maximum(0.0, x @ self.W1 + self.b1)   # ReLU hidden layer
         return h @ self.W2 + self.b2, h
 
     def predict(self, x) -> np.ndarray:
-        """前向输出（不更新参数）"""
+        """Forward output (does not update parameters)"""
         x = np.asarray(x, dtype=np.float64).reshape(1, -1)
         out, _ = self._forward(x)
         return out.reshape(-1)
 
     def train_step(self, x, y) -> float:
-        """单步 SGD（MSE 损失），返回当前批次均方误差"""
+        """Single-step SGD (MSE loss), returns current batch mean squared error"""
         x = np.asarray(x, dtype=np.float64).reshape(1, -1)
         y = np.asarray(y, dtype=np.float64).reshape(1, -1)
         out, h = self._forward(x)
@@ -166,15 +166,15 @@ class MLP:
 def encode_state_features(cx: int, cz: int, temp: Optional[float],
                           scale: float = 625.0) -> np.ndarray:
     """
-    将区块坐标 + 温度编码为连续特征向量，供 ICM/RND 网络使用。
-    scale 取搜索半径 10000 格对应的区块数 625，使坐标归一化到 [-1, 1] 附近。
+    Encode chunk coordinates + temperature as a continuous feature vector for ICM/RND networks.
+    scale is set to 625 (the number of chunks for search radius 10000 cells), normalizing coordinates to around [-1, 1].
     """
     t = 0.0 if temp is None else float(np.tanh(temp))
     return np.array([cx / scale, cz / scale, t], dtype=np.float64)
 
 
 def make_action_onehot(action_idx: int, num_actions: int) -> np.ndarray:
-    """动作索引 -> one-hot 向量（ICM 前向模型输入用）"""
+    """Action index -> one-hot vector (for ICM forward model input)"""
     a = np.zeros(num_actions, dtype=np.float64)
     a[action_idx % num_actions] = 1.0
     return a

@@ -1,28 +1,28 @@
 # ==============================================================================
-# 文件: sampling_sweep.yaml
-# 描述: Stage1 感知层消融：9种微观选点策略循环扫描
-# 说明: 温度固定为ON（黑盒创新基准），遍历所有区块内采样方法
+# File: sampling_sweep.yaml
+# Description: Stage1 perception layer ablation: sweep of 9 micro point-selection strategies
+# Notes: Temperature fixed ON (black-box innovation baseline); iterate over all within-chunk sampling methods
 # 
-# ⚠️ 注意: 此文件为批量扫描配置，包含 micro_strategy_list 列表。
-#          不可直接传入 DeepSeaExplorer，需通过上层调度脚本 
-#          (如 run_ablation_sweep.py) 循环读取列表并动态生成单策略配置执行。
+# ⚠️ Note: This file is a batch sweep configuration containing the micro_strategy_list.
+#          Cannot be passed directly to DeepSeaExplorer; must be processed by an upper-level scheduling script
+#          (e.g., run_ablation_sweep.py) that iterates over the list and dynamically generates single-strategy configs for execution.
 # ==============================================================================
 
-# --- 核心消融变量 ---
+# --- Core ablation variables ---
 temperature_enabled: true
-temperature_bins: 10          # 温度直方图分桶数；分桶范围由实测数据决定，不预设温度区间
-temperature_precision: 2      # 状态编码的温度量化精度（保留小数位数），非温度范围上下界
-# 状态格空间粒度（区块数），与 temp_on.yaml 锁定为同一值。
-# 本文件的唯一消融变量是 micro_strategy（9 种微观选点），其余全部锁定，
-# 避免策略差异与状态粒度差异相互混淆。必须 > 16（温度层分辨率）温度才有效。
+temperature_bins: 10          # Number of temperature histogram bins; bin range determined by empirical data, no preset temperature range
+temperature_precision: 2      # Temperature quantization precision for state encoding (decimal places kept), not temperature range bounds
+# State grid spatial granularity (number of chunks), locked to the same value as temp_on.yaml.
+# The only ablation variable in this file is micro_strategy (9 micro point-selection methods); all others are locked,
+# to avoid confounding strategy differences with state granularity differences. Must be > 16 (temperature layer resolution) for temperature to be effective.
 spatial_granularity: 32
 
-# --- 温度导向搜索（与 temp_on 一致，本文件唯一变量是 micro_strategy）---
+# --- Temperature-guided search (same as temp_on; the only variable in this file is micro_strategy) ---
 temperature_guidance_enabled: true
 temperature_guidance_weight: 3.0
 temperature_guidance_min_samples: 20
 
-# --- 扫描列表（由调度脚本解析） ---
+# --- Sweep list (parsed by the scheduling script) ---
 micro_strategy_list:
   - "center_point"
   - "corner_points"
@@ -34,10 +34,10 @@ micro_strategy_list:
   - "adaptive_sampling"
   - "diagonal_two_points"
 
-# --- 策略配置 ---
+# --- Strategy config ---
 chunk_finder: "ray_scan"
 
-# --- 距离与奖励配置 ---
+# --- Distance and reward config ---
 deep_sea_distance_threshold: 416
 deep_sea_reward_enabled: true
 curiosity_reward_enabled: true
@@ -48,7 +48,7 @@ curiosity_weight: 1.0
 out_of_bounds_penalty: -10.0
 repeat_visit_penalty: -5.0
 
-# --- RL超参数（显式锁定，防止默认值漂移） ---
+# --- RL hyperparameters (explicitly locked to prevent default drift) ---
 learning_rate: 0.1
 discount_factor: 0.95
 epsilon_start: 1.0
@@ -56,11 +56,11 @@ epsilon_end: 0.05
 epsilon_decay: 0.995
 replay_buffer_size: 8192
 
-# --- 阶段切换阈值（显式锁定） ---
+# --- Stage transition thresholds (explicitly locked) ---
 stage2_min_deep_sea_points: 5
 stage3_min_deep_sea_points: 10
 
-# --- 全局限制 ---
+# --- Global limits ---
 max_queries_per_episode: 10000
 target_deep_sea_points: 40
 search_radius: 10000

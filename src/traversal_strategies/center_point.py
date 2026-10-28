@@ -1,11 +1,11 @@
 # src/traversal_strategies/center_point.py
-"""[微观] 策略1：只查区块正中心1个点（默认基准）"""
+"""Micro strategy 1: query only the chunk centre (default baseline)."""
 from typing import List, Tuple
 from .base_strategy import BaseStrategy
 
 
 class CenterPointStrategy(BaseStrategy):
-    """区块正中心采样：仅查询区块中心1个坐标点"""
+    """Centre sampling: query the single centre coordinate of the chunk."""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

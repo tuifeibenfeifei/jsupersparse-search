@@ -1,18 +1,18 @@
 """
 _intrinsic_agent.py
-ICM / RND 共用的「内在好奇心 + Q-learning」episode 骨架。
+ICM / RND shared "intrinsic curiosity + Q-learning" episode skeleton.
 
-需求.txt 第十一节 L4：
-    · 基线算法独立于 main_algorithm.py，仅依赖 L0（cubiomes_wrapper + database）
-    · 各自拥有独立执行循环
-    · 返回格式与 run_single_episode() 保持一致
+Req. Sec. 11 L4:
+    - Baseline algorithms are independent of main_algorithm.py, depend only on L0 (cubiomes_wrapper + database)
+    - Each has its own independent execution loop
+    - Return format is consistent with run_single_episode()
 
-结构说明：
-    两个算法共享同一探索循环（epsilon-greedy 动作选择 → 移动 → 越界/去重处理
-    → 区块查询 → 内在+外在奖励 → Q-learning 更新），仅内在奖励计算方式不同：
-        · ICM：前向模型预测误差（state+action -> next_state）
-        · RND：预测器 vs 固定随机目标网络 的输出均方误差
-    本模块把循环抽出来，两个算法文件各自提供 intrinsic 对象即可。
+Structure:
+    Both algorithms share the same exploration loop (epsilon-greedy action selection -> move -> out-of-bounds/dedup handling
+    -> chunk query -> intrinsic+extrinsic reward -> Q-learning update); only the intrinsic reward computation differs:
+        - ICM: forward model prediction error (state+action -> next_state)
+        - RND: predictor vs fixed random target network output mean squared error
+    This module extracts the loop; the two algorithm files each provide an intrinsic object.
 """
 
 import random
@@ -24,28 +24,28 @@ from ._common import (make_env, within_radius, query_chunk_center,
 
 
 class IntrinsicModule:
-    """内在奖励模块接口（ICM / RND 各自实现）"""
+    """Intrinsic reward module interface (implemented separately by ICM / RND)"""
 
     def intrinsic(self, cur_feat, action_idx: int, nxt_feat) -> float:
-        """返回内在奖励值（纯函数，不应在此步更新参数）"""
+        """Return intrinsic reward value (pure function; should not update parameters in this step)"""
         raise NotImplementedError
 
     def train(self, cur_feat, action_idx: int, nxt_feat) -> None:
-        """用一次转移更新内部模型参数"""
+        """Update internal model parameters with one transition"""
         raise NotImplementedError
 
 
 def run_intrinsic_rl(config: dict, seed: int,
                      intrinsic_module: IntrinsicModule) -> dict:
     """
-    执行一次「内在好奇心 + Q-learning」episode（ICM/RND 共用）。
+    Run one "intrinsic curiosity + Q-learning" episode (shared by ICM/RND).
 
     Args:
-        config: 配置字典（含 RL 超参、奖励数值、预算等）
-        seed: 世界种子；算法随机性由 config["algo_seed"]（缺省取 seed）驱动
-        intrinsic_module: 内在奖励模块实例（ICM 或 RND）
+        config: configuration dict (containing RL hyperparameters, reward values, budget, etc.)
+        seed: world seed; algorithmic randomness is driven by config["algo_seed"] (defaults to seed)
+        intrinsic_module: intrinsic reward module instance (ICM or RND)
     Returns:
-        结果字典（格式与 run_single_episode 一致）
+        Result dict (format consistent with run_single_episode)
     """
     wrapper, db = make_env(config, seed)
     radius = int(config.get("search_radius", 10000))
@@ -53,7 +53,7 @@ def run_intrinsic_rl(config: dict, seed: int,
     target = int(config.get("target_deep_sea_points", 40))
     temp_enabled = bool(config.get("temperature_enabled", True))
 
-    # --- RL 超参（配置驱动） ---
+    # --- RL hyperparameters (config-driven) ---
     lr = float(config.get("learning_rate", 0.1))
     gamma = float(config.get("discount_factor", 0.95))
     eps_start = float(config.get("epsilon_start", 1.0))
@@ -63,7 +63,7 @@ def run_intrinsic_rl(config: dict, seed: int,
     action_steps = list(config.get("action_steps", [1, 2, 4, 8]))
     num_actions = num_directions * len(action_steps)
 
-    # --- 奖励数值（配置驱动） ---
+    # --- Reward values (config-driven) ---
     deep_reward = float(config.get("deep_sea_reward_value", 10.0))
     oob_penalty = float(config.get("out_of_bounds_penalty", -10.0))
     repeat_penalty = float(config.get("repeat_visit_penalty", -5.0))
@@ -72,7 +72,7 @@ def run_intrinsic_rl(config: dict, seed: int,
     algo_seed = int(config.get("algo_seed", seed))
     rng = random.Random((seed * 1000003 + algo_seed) & 0xFFFFFFFF)
 
-    # --- 状态空间：坐标粗化（区块 // 4），不编码温度（与主框架最终架构一致） ---
+    # --- State space: coordinate coarsening (chunks // 4), temperature not encoded (consistent with main framework's final architecture) ---
     q_table: Dict[tuple, List[float]] = {}
     visited_states = set()
     visited_chunks = set()
@@ -119,14 +119,14 @@ def run_intrinsic_rl(config: dict, seed: int,
         next_state = state_of(next_cx, next_cz)
         nxt_feat = encode_state_features(next_cx, next_cz, cur_temp)
 
-        # --- 越界处理 ---
+        # --- Out-of-bounds handling ---
         if not within_radius(next_cx, next_cz, radius):
             reward = oob_penalty
             next_state = state_of(0, 0)
             target_chunk = (0, 0)
             done_move = True
         elif (next_cx, next_cz) in visited_chunks:
-            # 重复访问：不消耗查询预算，仅惩罚
+            # Repeat visit: does not consume query budget, only penalized
             reward = repeat_penalty
             target_chunk = (next_cx, next_cz)
             done_move = True
@@ -135,15 +135,15 @@ def run_intrinsic_rl(config: dict, seed: int,
             target_chunk = (next_cx, next_cz)
             done_move = False
 
-        # --- 内在奖励（基于目标状态特征） ---
+        # --- Intrinsic reward (based on target state features) ---
         if not done_move:
             cur_feat = encode_state_features(current[0], current[1], cur_temp)
             r_int = intrinsic_module.intrinsic(cur_feat, action, nxt_feat)
             intrinsic_module.train(cur_feat, action, nxt_feat)
             reward = intrinsic_weight * r_int
-        # 越界/重复：保持纯惩罚，无内在奖励
+        # Out-of-bounds/repeat: remain pure penalty, no intrinsic reward
 
-        # --- 区块查询（非越界非重复时） ---
+        # --- Chunk query (when not out-of-bounds and not repeat) ---
         found = False
         if not done_move:
             cx, cz = target_chunk
@@ -158,7 +158,7 @@ def run_intrinsic_rl(config: dict, seed: int,
             if found:
                 reward += deep_reward
 
-        # --- Q-learning 更新（非终止步，含 gamma 自举） ---
+        # --- Q-learning update (non-terminal step, with gamma bootstrapping) ---
         qv = get_q(current_state)
         nq = get_q(next_state)
         td_target = reward + gamma * max(nq)

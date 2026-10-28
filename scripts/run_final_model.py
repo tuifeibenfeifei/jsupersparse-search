@@ -1,20 +1,20 @@
 """
 run_final_model.py
-最终版模型运行脚本（L5 最终验证层）
+Final model run script (L5 final validation layer)
 
-【职责】对应 需求.txt 第十四节 run_final_model.py：
-    读取 configs/final_model.yaml（Stage1~4 最优参数组合）→ 调用
-    main_algorithm.run_experiment() 运行指定种子 × 重复次数 → 收集结果
-    → 写入 results/final_logs/ → 绘制最终版分析图表。
+[Responsibility] Corresponds to Req. Sec. 14 run_final_model.py:
+    Read configs/final_model.yaml (Stage1~4 optimal parameter combination) -> call
+    main_algorithm.run_experiment() to run specified seeds x repeats -> collect results
+    -> write to results/final_logs/ -> plot final analysis figures.
 
-【输出双版本】（与各 Stage 脚本同一约定）：
-    simple   -> 简易版：每个世界种子输出一行平均值（N 行，N=种子数）
-    detailed -> 详细版：输出每次运行的完整结果 + 实时查询输出
+[Dual output versions] (same convention as each Stage script):
+    simple   -> simple version: one row of averages per world seed (N rows, N=number of seeds)
+    detailed -> detailed version: full results per run + real-time query output
 
-【命令行】
-    --mode    simple / detailed（默认 simple，便于批量出数）
-    --seeds   种子范围，如 1-20 或 1,2,3（默认 1-20）
-    --repeats 每个种子重复次数（默认 20）
+[Command line]
+    --mode    simple / detailed (default simple, for batch data generation)
+    --seeds   seed range, e.g. 1-20 or 1,2,3 (default 1-20)
+    --repeats number of repeats per seed (default 20)
 """
 
 import sys
@@ -29,7 +29,7 @@ FINAL_RESULTS_DIR = C.PROJECT_ROOT / "results" / "final_logs"
 
 
 def parse_seed_range(spec: str):
-    """解析种子范围：'1-20' -> [1..20]；'1,3,5' -> [1,3,5]"""
+    """Parse seed range: '1-20' -> [1..20]; '1,3,5' -> [1,3,5]"""
     spec = spec.strip()
     if "-" in spec and "," not in spec:
         lo, hi = spec.split("-", 1)
@@ -38,18 +38,19 @@ def parse_seed_range(spec: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="最终版模型运行脚本（L5 最终验证层）")
+    C.require_real_cubiomes()   # refuse to run on Mock (missing cubiomes.dll)
+    parser = argparse.ArgumentParser(description="Final model run script (L5 final validation layer)")
     parser.add_argument("--mode", choices=["simple", "detailed"], default="simple",
-                        help="输出模式：simple=每种子一行平均值；detailed=每次运行完整结果+实时查询")
+                        help="Output mode: simple=one average row per seed; detailed=full results per run + real-time queries")
     parser.add_argument("--seeds", default="1-20",
-                        help="世界种子范围，如 1-20 或 1,2,3（默认 1-20）")
+                        help="World seed range, e.g. 1-20 or 1,2,3 (default 1-20)")
     parser.add_argument("--repeats", type=int, default=20,
-                        help="每个世界种子的重复次数（默认 20）")
+                        help="Number of repeats per world seed (default 20)")
     args = parser.parse_args()
 
     if not FINAL_MODEL_YAML.exists():
-        print(f"[失败] 配置文件不存在: {FINAL_MODEL_YAML}")
-        print("请先依据 Stage1~4 消融结果填写 configs/final_model.yaml")
+        print(f"[FAIL] Config file not found: {FINAL_MODEL_YAML}")
+        print("Please first fill configs/final_model.yaml based on Stage1~4 ablation results")
         sys.exit(1)
 
     world_seeds = parse_seed_range(args.seeds)
@@ -57,9 +58,9 @@ def main():
     config["output_mode"] = args.mode
 
     C.print_stage_banner(
-        "L5 最终版模型验证", args.mode,
-        f"种子 {world_seeds[0]}~{world_seeds[-1]} × {args.repeats} 次重复，"
-        f"配置来源 configs/final_model.yaml",
+        "L5 final model validation", args.mode,
+        f"Seeds {world_seeds[0]}~{world_seeds[-1]} x {args.repeats} repeats, "
+        f"config source configs/final_model.yaml",
     )
     FINAL_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -72,13 +73,13 @@ def main():
         algo_seed_start=42,
     )
 
-    # 写入最终模型统计 CSV + 收敛曲线 CSV/PNG（需求第十四节：results/final_logs/）
+    # Write final model stats CSV + convergence curve CSV/PNG (Req. Sec. 14: results/final_logs/)
     stats["label"] = "final_model"
     C.save_csv([stats], "final_model_summary.csv", out_dir=FINAL_RESULTS_DIR)
 
     raw = stats.get("raw_results", [])
     if raw:
-        # 按配置 label 打包收敛轨迹（所有运行合为一条平均曲线）
+        # Package convergence trajectory by config label (all runs combined into one average curve)
         curve_label = "final_model"
         curves = {curve_label: [
             {"query_count": d.get("query_count", 0),
@@ -93,11 +94,11 @@ def main():
                                         "(Query Count vs Deep Sea Points)",
                                   out_dir=FINAL_RESULTS_DIR)
 
-    C.print_summary([stats], "L5 最终版模型",
-                    next_hint="最终版运行完毕：结果见 results/final_logs/")
+    C.print_summary([stats], "L5 final model",
+                    next_hint="Final run complete: see results/final_logs/")
 
-    # 打印最终版配置要点（需求第十节：动态输出说明头在 DeepSeaExplorer 内已打印）
-    print("\n  ▶ 最终版配置摘要")
+    # Print final config key points (Req. Sec. 10: dynamic output header is already printed inside DeepSeaExplorer)
+    print("\n  > Final config summary")
     print(f"    macro={config.get('chunk_finder')} | micro={config.get('micro_strategy')} "
           f"| threshold={config.get('deep_sea_distance_threshold')}")
     print(f"    temp={config.get('temperature_enabled')} | "

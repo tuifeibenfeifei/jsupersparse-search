@@ -1,13 +1,13 @@
 
 """
 ray_scan.py
-[宏观] 射线扫描：从中心向8个方向直线跳跃
-对应需求.txt第九节：ray_scan（8方向射线扫描，与zhongxin.py核心逻辑一致）
+[Overview] ray scan: straight-line jumps from the center toward 8 directions
+Corresponds to Req. Sec. 9: ray_scan (8-direction ray scan; core logic identical to zhongxin.py)
 
-【修复依据】(≤100字)
-仅补 reset()：原实现的方向索引与步长为实例状态，跨 episode 不重置会让第2次起的
-扫描轨迹从上次结束处继续外扩，违背需求第一节第3条「无状态重置」。扩散逻辑、
-方向表、步长推进方式均保持原设计不变。
+[Rationale for the fix] (<=100 chars)
+Only adds reset(): in the original implementation the direction index and step size are instance state; without resetting across episodes, from the 2nd run onward the
+scan trajectory keeps expanding outward from where it ended last time, violating Req. Sec. 1, item 3 "stateless reset". The expansion logic,
+direction table, and step-size progression all remain unchanged from the original design.
 """
 
 from typing import Tuple, List
@@ -16,20 +16,20 @@ from .base_finder import BaseFinder
 
 class RayScanFinder(BaseFinder):
     """
-    射线扫描：从起始区块出发，向8个方向轮流发射射线
-    每完成一轮完整的8方向扫描后，步长增加 4 个区块，形成辐射状向外覆盖
+    Ray scan: starting from the initial chunk, rays are emitted in rotation toward the 8 directions
+    after each complete round of the 8-direction scan, the step size increases by 4 chunks, forming radial outward coverage
 
-    步长增量 4 区块的依据（需求第七节）：
-        短步长 1–2 区块，长步长 4–8 区块；初始跳跃 4 区块 = 海底神殿结构半径。
+    Rationale for the 4-chunk step increment (Req. Sec. 7):
+        short step 1-2 chunks, long step 4-8 chunks; the initial jump of 4 chunks equals the structural radius of an ocean monument.
     """
 
-    # 8个方向：东、东南、南、西南、西、西北、北、东北
+    # the 8 directions: east, southeast, south, southwest, west, northwest, north, northeast
     _DIRECTIONS: List[Tuple[int, int]] = [
         (1, 0), (1, -1), (0, -1), (-1, -1),
         (-1, 0), (-1, 1), (0, 1), (1, 1),
     ]
 
-    # 每轮完整8方向扫描后的步长增量（区块）
+    # step increment (in chunks) after each complete 8-direction round
     _STEP_INCREMENT = 4
 
     def __init__(self, config=None, **kwargs):
@@ -42,13 +42,13 @@ class RayScanFinder(BaseFinder):
         return "ray_scan"
 
     def reset(self) -> None:
-        """重置射线状态，确保每个 episode 都从原点 (0,0) 重新辐射扫描"""
+        """reset the ray state so every episode re-radiates from the origin (0,0)"""
         self._dir_idx = 0
         self._step = 0
 
     def get_next_chunk(self, current_x: int, current_z: int) -> Tuple[int, int]:
         if self._step == 0 and self._dir_idx == 0:
-            # 第一次调用：返回起始点 (0, 0)
+            # first call: return the start point (0, 0)
             self._step = 1
             return (0, 0)
 
@@ -57,6 +57,6 @@ class RayScanFinder(BaseFinder):
         nz = dz * self._step
         self._dir_idx = (self._dir_idx + 1) % 8
         if self._dir_idx == 0:
-            # 每轮完整8方向后步长增加4个区块（需求第七节：长步长4-8区块）
+            # after each complete 8-direction round, increase step size by 4 chunks (Req. Sec. 7: long step 4-8 chunks)
             self._step += self._STEP_INCREMENT
         return (nx, nz)

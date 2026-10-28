@@ -1,24 +1,24 @@
 """
 run_ablation_stage2.py
-Stage2 宏观移动层消融实验调度脚本
+Stage2 macro-movement layer ablation experiment scheduling script
 
-【职责】对应 需求.txt 第十四节 run_ablation_stage2.py：
-    读取 stage2_movement/ 下的 YAML（继承 Stage1 最优）→ 循环调用 main_algorithm
-    跑 20种子×20次 → 生成 CSV 和图表 → 存入 results/ablation_logs/
+[Responsibility] Corresponds to Req. Sec. 14 in requirements.txt run_ablation_stage2.py:
+    Read YAML files under stage2_movement/ (inheriting Stage1 optimum) → loop calling main_algorithm
+    Run 20 seeds × 20 repetitions → generate CSV and plots → store in results/ablation_logs/
 
-【消融变量】需求第八节 Stage2（宏观移动层）：
-    锁定 Stage1 最优结果，仅测试【宏观遍历策略】与【深海点间距阈值】。
+[Ablation variables] Req. Sec. 8 Stage2 (macro-movement layer):
+    Lock Stage1 optimal results; only test [macro-traversal strategy] and [deep-sea point distance threshold].
 
-【两组实验】
-    1. finder_sweep   : 5 种宏观遍历策略对比（ray/spiral/adaptive/grid/anchor）
-    2. dist_threshold : 间距阈值 [416,448,480,512] 扫描（锁定单一 finder，避免变量耦合）
+[Two experiment groups]
+    1. finder_sweep   : comparison of 5 macro-traversal strategies (ray/spiral/adaptive/grid/anchor)
+    2. dist_threshold : distance threshold [416,448,480,512] sweep (lock a single finder to avoid variable coupling)
 """
 
 import sys
 from pathlib import Path
 from typing import Dict, List
 
-# 复用公共调度模块（YAML加载/run_experiment驱动/CSV/绘图/汇总）
+# Reuse common scheduling module (YAML loading / run_experiment driver / CSV / plotting / summary)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _ablation_common as C
 
@@ -26,10 +26,10 @@ STAGE2_CONFIG_DIR = C.PROJECT_ROOT / "configs" / "ablation" / "stage2_movement"
 
 
 def run_finder_sweep(mode: str) -> List[Dict[str, float]]:
-    """宏观遍历策略扫描（5 种），label 形如 finder=grid_scan"""
+    """Macro-traversal strategy sweep (5 methods), label format finder=grid_scan"""
     path = STAGE2_CONFIG_DIR / "finder_sweep.yaml"
     if not path.exists():
-        print(f"[跳过] 配置文件不存在: {path}")
+        print(f"[Skip] Config file not found: {path}")
         return []
     return C.run_sweep(
         C.load_yaml(path), sweep_field="chunk_finder_list", mode=mode,
@@ -38,10 +38,10 @@ def run_finder_sweep(mode: str) -> List[Dict[str, float]]:
 
 
 def run_distance_threshold_sweep(mode: str) -> List[Dict[str, float]]:
-    """间距阈值扫描 [416,448,480,512]，label 形如 threshold=416"""
+    """Distance threshold sweep [416,448,480,512], label format threshold=416"""
     path = STAGE2_CONFIG_DIR / "dist_threshold_sweep.yaml"
     if not path.exists():
-        print(f"[跳过] 配置文件不存在: {path}")
+        print(f"[Skip] Config file not found: {path}")
         return []
     return C.run_sweep(
         C.load_yaml(path), sweep_field="distance_threshold_list", mode=mode,
@@ -51,21 +51,22 @@ def run_distance_threshold_sweep(mode: str) -> List[Dict[str, float]]:
 
 
 def main():
+    C.require_real_cubiomes()   # refuse to run on Mock (missing cubiomes.dll)
     args = C.make_arg_parser(
-        "Stage2 宏观移动层消融实验调度脚本",
+        "Stage2 macro-movement layer ablation experiment scheduling script",
         part_choices=["all", "finder", "threshold"],
     ).parse_args()
     mode = args.mode
 
     C.print_stage_banner(
-        "Stage2 宏观移动层消融实验", mode,
-        "宏观遍历策略 5 种 + 深海点间距阈值 [416,448,480,512]（继承 Stage1 最优）",
+        "Stage2 macro-movement layer ablation experiment", mode,
+        "5 macro-traversal strategies + deep-sea point distance threshold [416,448,480,512] (inheriting Stage1 optimum)",
     )
 
     finder_results: List[Dict[str, float]] = []
     threshold_results: List[Dict[str, float]] = []
 
-    # 1. 宏观遍历策略扫描
+    # 1. Macro-traversal strategy sweep
     if args.part in ("all", "finder"):
         finder_results = run_finder_sweep(mode)
         if finder_results:
@@ -73,7 +74,7 @@ def main():
             C.plot_comparison(finder_results, "stage2_finder_comparison.png",
                               "Stage2: Macro-traversal Strategy Comparison (5 Methods)")
 
-    # 2. 间距阈值扫描
+    # 2. Distance threshold sweep
     if args.part in ("all", "threshold"):
         threshold_results = run_distance_threshold_sweep(mode)
         if threshold_results:
@@ -81,15 +82,15 @@ def main():
             C.plot_comparison(threshold_results, "stage2_threshold_comparison.png",
                               "Stage2: Deep-sea Distance Threshold Sweep [416,448,480,512]")
 
-    # 3. 合并汇总（需求第十四节：stage2_summary.csv）
+    # 3. Merge summary (Req. Sec. 14: stage2_summary.csv)
     all_results = finder_results + threshold_results
     if all_results:
         C.save_csv(all_results, "stage2_summary.csv")
         C.print_summary(all_results, "Stage2",
-                        next_hint="下一步：依据本表确定 Stage2 最优移动骨架（遍历策略+间距阈值），"
-                                  "将其填入 Stage3 配置的非测试变量")
+                        next_hint="Next step: Determine the optimal Stage2 movement skeleton based on this table (traversal strategy + distance threshold), "
+                                  "and fill it into the non-tested variables of the Stage3 config")
     else:
-        print("\n[失败] 未找到任何有效配置，请检查 configs/ablation/stage2_movement/")
+        print("\n[Failed] No valid configuration found. Please check configs/ablation/stage2_movement/")
         sys.exit(1)
 
 

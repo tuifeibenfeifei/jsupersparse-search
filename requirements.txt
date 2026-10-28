@@ -1,19 +1,19 @@
 # ==============================================================================
-# 项目依赖清单
-# 用途：pip install -r requirements.txt
+# project dependency list
+# usage: pip install -r requirements.txt
 #
-# 版本为本机实测通过版本（Python 3.9.12 / Windows）：
+# versions verified locally (Python 3.9.12 / Windows):
 #   numpy 2.0.2 | pyyaml 6.0.3 | matplotlib 3.9.4 | pandas 2.3.3
 # ==============================================================================
 
-# --- Stage1 实际使用 ---
-# scripts/run_ablation_stage1.py 读取 configs/*.yaml
+# --- actually used in Stage1 ---
+# scripts/run_ablation_stage1.py reads configs/*.yaml
 PyYAML>=6.0.3
-# scripts/run_ablation_stage1.py 绘制 stage1_comparison.png（脚本已设 matplotlib.use("Agg")，无窗口环境可用）
+# scripts/run_ablation_stage1.py draws stage1_comparison.png (the script sets matplotlib.use("Agg"), usable in headless environments)
 matplotlib>=3.9.4
 
-# --- 需求第十四节列出，当前 Stage1 未直接 import ---
-# numpy：统计计算已改用纯 Python 实现，后续 Stage4 收敛曲线分析可能用到
+# --- required by baselines and figure scripts ---
+# numpy: the lightweight MLP in src/baselines/{_common,icm,rnd}.py and scripts/generate_fig8.py
 numpy>=2.0.2
-# pandas：后续整理多阶段消融汇总表时可能用到
+# pandas: not imported anywhere yet (kept for optional post-hoc summary tables); safe to skip
 pandas>=2.3.3

@@ -1,12 +1,12 @@
 # src/traversal_strategies/random_two_points.py
-"""[微观] 策略3：随机抽2个点查"""
+"""Micro strategy 3: query two random points."""
 import random
 from typing import List, Tuple
 from .base_strategy import BaseStrategy
 
 
 class RandomTwoPointsStrategy(BaseStrategy):
-    """区块内随机2点采样：每次查询随机选取2个不同坐标点"""
+    """Random two-point sampling: pick two distinct coordinates per query."""
 
     def __init__(self, seed: int = None, **kwargs):
         super().__init__(**kwargs)

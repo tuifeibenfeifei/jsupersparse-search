@@ -1,20 +1,20 @@
 # ==============================================================================
-# 文件: final_model.yaml
-# 描述: 最终版模型配置（L5 最终验证层 / 需求第八节 Stage5）
-# 说明: 由各阶段最优结果组合而成：
-#   · Stage1 最优感知: micro_strategy=center_point + 温度不进Q状态仅做导向偏向
-#   · Stage2 对比胜出: chunk_finder=adaptive_scan（全量 20×20 对比，2026-09-22，
-#     平均深海点 34.97 vs grid_scan 34.83，成功率 87.4% vs 87.1%；adaptive_scan
-#     已修复扫描周期死循环缺陷，现为 5 种宏观策略中实测最优）
-#   · Stage3 基线:     全部奖励开启（深海+10 / 好奇心+3×1.0 权重不变 / 惩罚-10、-5）
-#   · 全局限制:        40 个深海点 + 10000 次查询上限（用户指定，不再由 Stage4 决定）
+# File: final_model.yaml
+# Description: Final model config (L5 final validation layer / Req. Sec. 8 Stage5)
+# Notes: Composed of optimal results from each stage:
+#   · Stage1 optimal perception: micro_strategy=center_point + temperature not in Q state, used only as guidance bias
+#   · Stage2 comparison winner: chunk_finder=grid_scan (focused ray_scan vs grid_scan head-to-head,
+#     20 world seeds x 20 repeats = 400 runs per strategy, both reach 40/40 points in 400/400 runs;
+#     grid_scan 2926.5 mean queries vs ray_scan 3154.1, i.e. 7.2% fewer queries, so grid_scan is adopted)
+#   · Stage3 baseline: all rewards enabled (deep-sea +10 / curiosity +3×1.0 weight unchanged / penalty -10, -5)
+#   · Global limits: 40 deep-sea points + 10000 query cap (user-specified; no longer determined by Stage4)
 # ==============================================================================
 
-# --- 实验元信息 ---
+# --- Experiment metadata ---
 experiment_name: "final_model"
 output_mode: "simple"
 
-# --- 温度感知（Stage1 最优：总开关 ON + 不进Q状态 + 导向偏向 ON）---
+# --- Temperature perception (Stage1 optimum: master switch ON + not in Q state + guidance bias ON) ---
 temperature_enabled: true
 temperature_in_state: false
 temperature_bins: 10
@@ -24,14 +24,14 @@ temperature_guidance_enabled: true
 temperature_guidance_weight: 3.0
 temperature_guidance_min_samples: 20
 
-# --- 感知层（微观选点）---
+# --- Perception layer (micro point selection) ---
 micro_strategy: "center_point"
 
-# --- 移动层（宏观遍历，Stage2 全量 20×20 对比胜出：adaptive_scan）---
-chunk_finder: "adaptive_scan"
+# --- Movement layer (macro traversal; Stage2 ray vs grid head-to-head winner: grid_scan) ---
+chunk_finder: "grid_scan"
 deep_sea_distance_threshold: 416
 
-# --- 奖励层（Stage3 基线：全部开启，好奇心数值保持不变）---
+# --- Reward layer (Stage3 baseline: all enabled; curiosity values unchanged) ---
 deep_sea_reward_enabled: true
 deep_sea_reward_value: 10.0
 curiosity_reward_enabled: true
@@ -41,7 +41,7 @@ penalty_reward_enabled: true
 out_of_bounds_penalty: -10.0
 repeat_visit_penalty: -5.0
 
-# --- 强化学习超参（与各阶段基准值一致）---
+# --- RL hyperparameters (consistent with stage baseline values) ---
 learning_rate: 0.1
 discount_factor: 0.95
 epsilon_start: 1.0
@@ -51,16 +51,19 @@ replay_buffer_size: 8192
 replay_batch_size: 16
 replay_frequency: 5
 
-# --- 阶段门限（多阶段学习机制）---
+# --- Stage thresholds (multi-stage learning mechanism) ---
 stage2_min_deep_sea_points: 5
 stage3_min_deep_sea_points: 10
 
-# --- 全局目标限制（调整难度：40 点 + 8000 查询上限）---
-max_queries_per_episode: 8000
+# --- Global target limits (user-specified: 40 points + 10000 query cap) ---
+max_queries_per_episode: 10000
 target_deep_sea_points: 40
 search_radius: 10000
 
-# --- 动作空间 ---
+# --- Action space ---
 action_directions: 8
 action_steps: [1, 2, 4, 8]
-direction_memory_bonus: 0.0
+# Req. Sec. 1: remember (direction, step) pairs that produced deep-sea finds and weight them higher
+# later. Kept at the algorithm default 0.5 so the final model is identical to the config that every
+# ablation stage validated (the previous 0.0 silently disabled the mechanism and inflated queries).
+direction_memory_bonus: 0.5

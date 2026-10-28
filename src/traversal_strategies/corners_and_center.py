@@ -1,12 +1,12 @@
 # src/traversal_strategies/corners_and_center.py
-"""[微观] 策略5：四角+中心共5个点（Stage1基准策略）"""
+"""Micro strategy 5: four corners plus centre (Stage-1 baseline)."""
 from typing import List, Tuple
 from .base_strategy import BaseStrategy
 from ._utils import generate_corner_points
 
 
 class CornersAndCenterStrategy(BaseStrategy):
-    """四角+中心采样：查询区块四个角 + 正中心，共5个坐标点"""
+    """Four corners plus centre: five coordinates per chunk."""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

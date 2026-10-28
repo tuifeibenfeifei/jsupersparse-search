@@ -1,17 +1,17 @@
 """
 run_finder_showdown.py
-Stage2 精简对比：仅 ray_scan vs grid_scan（用户指定，避免全 5 策略耗时过长）。
+Stage2 compact comparison: only ray_scan vs grid_scan (user-specified, to avoid the long runtime of all 5 strategies).
 
-用途：决定最终版采用哪个宏观遍历策略。
-规模：20 世界种子 × 20 次重复 = 400 次运行 / 单策略（需求第十二节）。
+Purpose: decide which macro traversal strategy the final version should adopt.
+Scale: 20 world seeds x 20 repeats = 400 runs per strategy (Req. Sec. 12).
 
-⚠️ 支持 --finder 参数单独运行一个策略，以便两个策略并行执行、缩短墙钟时间：
+WARNING: supports --finder argument to run a single strategy, so the two strategies can run in parallel to reduce wall-clock time:
        python run_finder_showdown.py --finder ray_scan
        python run_finder_showdown.py --finder grid_scan
-   不带 --finder 时顺序运行两者并输出汇总对比表。
+   Without --finder, run both sequentially and output a summary comparison table.
 
-数值全部来自 configs/ablation/stage2_movement/finder_sweep.yaml（需求第十节：
-配置驱动，严禁硬编码消融数值）。
+All values come from configs/ablation/stage2_movement/finder_sweep.yaml (Req. Sec. 10:
+config-driven, hardcoding ablation values is forbidden).
 """
 
 import sys
@@ -21,6 +21,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import _ablation_common as _C
 from _ablation_common import (
     CONFIG_DIR, load_yaml, build_config, run_single_config,
     save_csv, plot_comparison, print_summary,
@@ -31,44 +32,45 @@ CANDIDATE_FINDERS = ["ray_scan", "grid_scan"]
 
 
 def run_one(finder: str, shared: dict, mode: str):
-    """运行单个宏观策略，返回统计字典"""
+    """Run a single macro strategy, return stats dict"""
     config = build_config(shared, {"chunk_finder": finder}, mode)
-    return run_single_config(config, f"finder={finder}", "Stage2-精简")
+    return run_single_config(config, f"finder={finder}", "Stage2-compact")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Stage2 精简对比：ray_scan vs grid_scan")
+    _C.require_real_cubiomes()   # refuse to run on Mock (missing cubiomes.dll)
+    parser = argparse.ArgumentParser(description="Stage2 compact comparison: ray_scan vs grid_scan")
     parser.add_argument("--mode", default="simple", choices=["simple", "detailed"],
-                        help="输出模式：simple=每配置20行平均值；detailed=完整结果+实时查询")
+                        help="Output mode: simple=20 average rows per config; detailed=full results + real-time queries")
     parser.add_argument("--finder", default=None, choices=CANDIDATE_FINDERS,
-                        help="仅运行指定策略（用于并行执行）；缺省时顺序运行两者")
-    parser.add_argument("--no-plot", action="store_true", help="只输出 CSV，不生成 PNG")
+                        help="Run only the specified strategy (for parallel execution); default runs both sequentially")
+    parser.add_argument("--no-plot", action="store_true", help="Output only CSV, do not generate PNG")
     args = parser.parse_args()
 
     yaml_cfg = load_yaml(CONFIG_DIR / SHOWDOWN_YAML)
-    # 列表键为调度元信息，不可直接传入 Explorer（需求第九节）
+    # The list key is scheduling metadata and cannot be passed directly to Explorer (Req. Sec. 9)
     shared = {k: v for k, v in yaml_cfg.items() if k != "chunk_finder_list"}
 
     finders = [args.finder] if args.finder else CANDIDATE_FINDERS
 
     if args.finder:
-        # 单策略模式：供并行调用，各自写独立 CSV 避免竞争
+        # Single-strategy mode: for parallel invocation, each writes its own CSV to avoid race conditions
         stats = run_one(args.finder, shared, args.mode)
         save_csv([stats], f"stage2_{args.finder}_summary.csv")
-        print_summary([stats], f"Stage2 单策略结果: {args.finder}")
+        print_summary([stats], f"Stage2 single-strategy result: {args.finder}")
         return
 
     print("=" * 74)
-    print("  Stage2 精简对比：ray_scan vs grid_scan")
+    print("  Stage2 compact comparison: ray_scan vs grid_scan")
     print("=" * 74)
-    print(f"  输出模式    : {'简易版 (20行平均值)' if args.mode == 'simple' else '详细版 (完整结果+实时查询输出)'}")
-    print(f"  候选策略    : {', '.join(finders)}")
-    print(f"  继承基准    : micro={shared.get('micro_strategy')}, "
+    print(f"  Output mode  : {'simple (20 average rows)' if args.mode == 'simple' else 'detailed (full results + real-time query output)'}")
+    print(f"  Candidate strategies: {', '.join(finders)}")
+    print(f"  Inherited baseline: micro={shared.get('micro_strategy')}, "
           f"threshold={shared.get('deep_sea_distance_threshold')}")
-    print(f"  温度架构    : in_state={shared.get('temperature_in_state')}, "
+    print(f"  Temperature architecture: in_state={shared.get('temperature_in_state')}, "
           f"guidance={shared.get('temperature_guidance_enabled')}")
-    print(f"  查询上限    : {shared.get('max_queries_per_episode')} / "
-          f"目标 {shared.get('target_deep_sea_points')} 点")
+    print(f"  Query budget  : {shared.get('max_queries_per_episode')} / "
+          f"target {shared.get('target_deep_sea_points')} points")
 
     results = [run_one(f, shared, args.mode) for f in finders]
 
@@ -76,14 +78,14 @@ def main():
     if not args.no_plot:
         plot_comparison(results, "stage2_finder_showdown_comparison.png",
                         "Stage2 Finder Showdown (ray_scan vs grid_scan)")
-    print_summary(results, "Stage2 精简对比 (ray_scan vs grid_scan)")
+    print_summary(results, "Stage2 compact comparison (ray_scan vs grid_scan)")
 
-    # 最终版选型建议
+    # Final version selection recommendation
     best = max(results, key=lambda s: s.get("mean_points", 0))
-    print(f"\n  ▶ 最终版建议采用: {best['label']}  "
-          f"(平均深海点 {best.get('mean_points', 0):.2f})")
+    print(f"\n  > Final version recommendation: {best['label']}  "
+          f"(mean deep-sea points {best.get('mean_points', 0):.2f})")
     if csv_path:
-        print(f"  ▶ CSV 已保存: {csv_path}")
+        print(f"  > CSV saved: {csv_path}")
 
 
 if __name__ == "__main__":

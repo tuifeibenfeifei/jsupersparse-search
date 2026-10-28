@@ -1,4 +1,4 @@
-"""reward_modules/__init__.py - 奖励模块插件包"""
+"""reward_modules/__init__.py - reward module plugin package."""
 from .curiosity_reward import CuriosityReward
 from .deep_sea_reward import DeepSeaReward
 from .full_reward_baseline import FullRewardBaseline

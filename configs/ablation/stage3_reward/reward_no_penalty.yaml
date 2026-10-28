@@ -1,13 +1,13 @@
 # ==============================================================================
-# 文件: reward_no_penalty.yaml
-# 描述: Stage3 奖励塑形层消融 —— 关闭「每步负奖励/惩罚」
-# 说明: 验证惩罚项(越界-10/重复-5)是否为必要信号。其余锁定为前两阶段最优。
+# file: reward_no_penalty.yaml
+# description: Stage3 reward-shaping layer ablation — disable "per-step negative reward / penalty"
+# note: verify whether the penalty term (out-of-bounds -10 / repeat -5) is a necessary signal. Everything else is locked to the best of the previous two stages.
 #
-# ⚠️ 继承占位：chunk_finder / deep_sea_distance_threshold 应在 Stage2 跑完后
-#   替换为 Stage2 最优结果。本文件唯一消融变量是 penalty_reward_enabled=false。
+# inheritance placeholder: chunk_finder / deep_sea_distance_threshold should, after Stage2 finishes,
+#   be replaced with Stage2's best results. This file's only ablation variable is penalty_reward_enabled=false.
 # ==============================================================================
 
-# --- 感知层（继承 Stage1 最优，锁定）---
+# --- sensing layer (inherits the Stage1 best, locked) ---
 temperature_enabled: true
 temperature_in_state: false
 temperature_guidance_enabled: true
@@ -18,21 +18,21 @@ temperature_precision: 2
 spatial_granularity: 32
 micro_strategy: "center_point"
 
-# --- 移动层（继承 Stage2 最优：全量 20x20 对比胜出 = adaptive_scan，2026-09-22）---
+# --- movement layer (inherits the Stage2 best: winner of the full 20x20 comparison = adaptive_scan, 2026-09-22) ---
 chunk_finder: "adaptive_scan"
 deep_sea_distance_threshold: 416
 
-# --- 奖励开关（本文件消融变量：关闭惩罚）---
+# --- reward switches (this file's ablation variable: penalty disabled) ---
 deep_sea_reward_enabled: true
 curiosity_reward_enabled: true
-penalty_reward_enabled: false       # ← 关闭项
+penalty_reward_enabled: false       # <- disabled item
 deep_sea_reward_value: 10.0
 curiosity_reward_value: 3.0
 curiosity_weight: 1.0
-out_of_bounds_penalty: -10.0        # 数值保留但因开关关闭而不生效
-repeat_visit_penalty: -5.0          # 数值保留但因开关关闭而不生效
+out_of_bounds_penalty: -10.0        # value retained but inactive because the switch is off
+repeat_visit_penalty: -5.0          # value retained but inactive because the switch is off
 
-# --- RL超参数（显式锁定）---
+# --- RL hyperparameters (explicitly locked) ---
 learning_rate: 0.1
 discount_factor: 0.95
 epsilon_start: 1.0
@@ -40,11 +40,11 @@ epsilon_end: 0.05
 epsilon_decay: 0.995
 replay_buffer_size: 8192
 
-# --- 阶段切换阈值（显式锁定）---
+# --- stage-switching thresholds (explicitly locked) ---
 stage2_min_deep_sea_points: 5
 stage3_min_deep_sea_points: 10
 
-# --- 全局限制 ---
+# --- global limits ---
 max_queries_per_episode: 10000
 target_deep_sea_points: 40
 search_radius: 10000

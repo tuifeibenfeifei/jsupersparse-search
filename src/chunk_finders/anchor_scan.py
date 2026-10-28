@@ -1,20 +1,20 @@
 """
 anchor_scan.py
-[宏观] 锚点重定位扫描：发现深海点后，以该点为新锚点向外 BFS 扩散。
+[Overview] Anchor relocation scan: after discovering a deep-sea point, use it as a new anchor and expand outward via BFS.
 
-对应需求：
-  · 第一节第4条：发现一个深海点后，其周围阈值范围内视为同一生成网格区域，
-                 后续搜索应从该点向外继续。
-  · 第二节：若当前区块按选点策略查询后均非深海点，则跳转到一定距离外继续搜索。
-对应论文创新点3：master-slave 协同——BFS 保证覆盖完整性 + RL 指导方向。
-  本 finder 负责 Stage1/2 的 BFS 式系统覆盖（贴着已知深海区外缘推进），
-  Stage3 由 Q-learning + 温度导向偏向接管方向决策，二者构成主从协同。
+Corresponding requirements:
+  - Req. Sec. 1.4: after discovering a deep-sea point, the area within threshold around it is considered the same generation grid region,
+                 subsequent search should continue outward from that point.
+  - Req. Sec. 2: if all chunks queried per the point-selection strategy are non-deep-sea points, jump some distance away and continue searching.
+Corresponding paper novelty 3: master-slave coordination - BFS ensures coverage completeness + RL guides direction.
+  This finder handles BFS-style systematic coverage for Stage1/2 (advancing along the edge of the known deep-sea region),
+  Stage3 is taken over by Q-learning + temperature-directed bias for direction decisions; the two form master-slave coordination.
 
-为什么有效（实测依据）：
-  深海场空间自相关在 lag=416格(阈值) 仍达 0.23，聚集性强；
-  故从已知深海锚点向外缘扩散，命中率远高于从原点盲目辐射。
-  这打破了 ray_scan 的预算瓶颈——后者发现深海点后仍以原点为中心辐射，
-  大量查询浪费在已探明区域，预算耗尽也凑不满 40 点。
+Why it works (empirical basis):
+  Deep-sea field spatial autocorrelation at lag=416 cells (threshold) still reaches 0.23, strong clustering;
+  hence expanding outward from known deep-sea anchors yields a much higher hit rate than blindly radiating from the origin.
+  This breaks ray_scan's budget bottleneck - the latter still radiates from the origin after finding deep-sea points,
+  wasting many queries on already-probed areas; even exhausting the budget fails to reach 40 points.
 """
 
 from collections import deque
@@ -25,36 +25,36 @@ from .base_finder import BaseFinder
 
 class AnchorScanFinder(BaseFinder):
     """
-    锚点重定位扫描（BFS 覆盖 + 射线开疆）
+    Anchor relocation scan (BFS coverage + ray frontier expansion)
 
-    工作机制：
-        1. BFS frontier 队列：每当发现新深海锚点，向 8 方向、距离≈间距阈值处
-           派生探索起点入队，使搜索始终贴着已知深海区外缘系统性推进。
-        2. 回退射线扫描：frontier 为空时，以分层射线（同 ray_scan）开疆拓土，
-           寻找新的深海锚点。
-        3. 锚点去重：update_deep_sea_density 每次收到全量深海点，仅对新锚点派生 frontier。
+    Working mechanism:
+        1. BFS frontier queue: whenever a new deep-sea anchor is found, enqueue exploration starts at 8 directions, distance ~ spacing threshold,
+           so search always advances systematically along the edge of the known deep-sea region.
+        2. Fallback ray scan: when frontier is empty, use layered rays (same as ray_scan) to expand frontier,
+           to find new deep-sea anchors.
+        3. Anchor dedup: update_deep_sea_density receives the full deep-sea point set each time and derives frontier only for new anchors.
     """
 
-    # 8方向，顺序与 main_algorithm._DIRECTION_DELTAS / RayScanFinder._DIRECTIONS 一致
+    # 8 directions, order consistent with main_algorithm._DIRECTION_DELTAS / RayScanFinder._DIRECTIONS
     _DIRECTIONS: List[Tuple[int, int]] = [
         (1, 0), (1, -1), (0, -1), (-1, -1),
         (-1, 0), (-1, 1), (0, 1), (1, 1),
     ]
 
-    # 射线回退的步长档位缺省值，仅在 config 缺失 action_steps 时兜底
+    # Default step sizes for ray fallback, only used as fallback when config lacks action_steps
     _DEFAULT_STEPS: List[int] = [1, 2, 4, 8]
 
     def __init__(self, config=None, **kwargs):
         super().__init__(config, **kwargs)
-        # 间距阈值(格) -> 区块；派生跳跃距离取略大于阈值，确保跳出排斥区(需求第一节第4条)
+        # Spacing threshold (cells) -> chunks; derived jump distance is slightly larger than threshold to ensure jumping out of the exclusion zone (Req. Sec. 1.4)
         threshold_blocks = self.config.get("deep_sea_distance_threshold", 416)
         self._jump_chunks = max(int(threshold_blocks) // 16 + 1, 1)
 
-        # 射线回退步长档位由配置注入，严禁硬编码（需求第十节）
+        # Ray fallback step sizes are injected via config; hardcoding is forbidden (Req. Sec. 10)
         steps = self.config.get("action_steps") or self._DEFAULT_STEPS
         self._ray_steps: List[int] = [int(s) for s in steps]
 
-        # frontier 容量上限：防止极端情况下队列无限增长（深海点上限40 x 8方向 = 320）
+        # Frontier capacity limit: prevent unbounded queue growth in extreme cases (deep-sea point cap 40 x 8 directions = 320)
         self._max_frontier = int(self.config.get("anchor_max_frontier", 4096))
 
         self.reset()
@@ -64,10 +64,10 @@ class AnchorScanFinder(BaseFinder):
         return "anchor_scan"
 
     def reset(self) -> None:
-        """重置全部内部状态，确保每个 episode 从原点重新开始（需求第一节第3条）"""
+        """Reset all internal state, ensuring each episode restarts from the origin (Req. Sec. 1.3)"""
         self._frontier: deque = deque()
         self._anchors: Set[Tuple[int, int]] = set()
-        # 回退射线扫描游标
+        # fallback ray scan cursor
         self._ray_dir = 0
         self._ray_step_idx = 0
         self._ray_layer = 1
@@ -75,10 +75,10 @@ class AnchorScanFinder(BaseFinder):
 
     def update_deep_sea_density(self, chunks: List[Tuple[int, int]]) -> None:
         """
-        外部注入已发现深海点的区块坐标（由 main_algorithm._sync_finder_density 调用）。
-        对每个【新】锚点，向 8 方向、距离≈阈值处派生 BFS 探索起点。
+        Externally inject chunk coordinates of discovered deep-sea points (called by main_algorithm._sync_finder_density).
+        For each [new] anchor, derive BFS exploration starts at 8 directions, distance ~ threshold.
         Args:
-            chunks: 全量深海点区块坐标列表 [(cx, cz), ...]
+            chunks: full list of deep-sea point chunk coordinates [(cx, cz), ...]
         """
         for anchor in chunks:
             ax, az = anchor
@@ -93,7 +93,7 @@ class AnchorScanFinder(BaseFinder):
                 )
 
     def _next_ray_chunk(self) -> Tuple[int, int]:
-        """frontier 空时的回退：分层射线扫描开疆拓土（逻辑同 ray_scan）"""
+        """Fallback when frontier is empty: layered ray scan to expand frontier (same logic as ray_scan)"""
         if not self._emitted_origin:
             self._emitted_origin = True
             return (0, 0)
@@ -102,7 +102,7 @@ class AnchorScanFinder(BaseFinder):
         step = self._ray_steps[self._ray_step_idx % len(self._ray_steps)] * self._ray_layer
         nx, nz = dx * step, dz * step
 
-        # 推进：步长(内层) -> 方向(中层) -> 层数(外层)
+        # Advance: step size (inner) -> direction (middle) -> layer (outer)
         self._ray_step_idx += 1
         if self._ray_step_idx % len(self._ray_steps) == 0:
             self._ray_dir += 1
@@ -113,9 +113,9 @@ class AnchorScanFinder(BaseFinder):
 
     def get_next_chunk(self, current_x: int, current_z: int) -> Tuple[int, int]:
         """
-        返回下一个待查区块：优先 BFS frontier（贴着已知深海区外缘系统推进），
-        frontier 空时回退到射线扫描开疆。
-        重复/已访问区块由 main_algorithm 的 _visited_chunks 去重，此处不重复判断。
+        Return the next chunk to query: prefer BFS frontier (systematically advancing along the known deep-sea region edge),
+        fall back to ray scan frontier expansion when frontier is empty.
+        Duplicate/visited chunks are deduped by main_algorithm's _visited_chunks; not checked here.
         """
         if self._frontier:
             return self._frontier.popleft()
@@ -123,10 +123,10 @@ class AnchorScanFinder(BaseFinder):
 
     @property
     def anchor_count(self) -> int:
-        """当前已登记的深海锚点数（供调试与收敛分析）"""
+        """Current number of registered deep-sea anchors (for debugging and convergence analysis)"""
         return len(self._anchors)
 
     @property
     def frontier_size(self) -> int:
-        """当前 BFS 待探索队列长度"""
+        """Current BFS pending exploration queue length"""
         return len(self._frontier)

@@ -1,27 +1,27 @@
 # ==============================================================================
-# 文件: dist_threshold_sweep.yaml
-# 描述: Stage2 宏观移动层消融 —— 深海点间距阈值循环扫描 [416, 448, 480, 512]
-# 说明: 锁定 Stage1 最优感知配置 + 单一宏观策略，仅测试【深海点间距阈值】。
+# File: dist_threshold_sweep.yaml
+# Description: Stage2 macro-movement layer ablation —— deep-sea point distance threshold sweep [416, 448, 480, 512]
+# Notes: Lock Stage1 optimal perception config + single macro strategy; only test [deep-sea point distance threshold].
 #
-# 学术依据（需求第十三节）：416~512 基于 MC1.17 海底神殿 32×32 区块(512格) Region
-#   生成网格，416 是两个相邻 Region 中神殿的理论最小欧氏距离，用于过滤同一生成网格冗余探测。
+# Academic justification (Req. Sec. 13): 416~512 is based on the MC1.17 Ocean Monument 32×32 chunk (512 cells) Region
+#   spawn grid; 416 is the theoretical minimum Euclidean distance between monuments in two adjacent Regions, used to filter redundant probes within the same spawn grid.
 #
-# ⚠️ 单一 finder 约束：本文件锁定 chunk_finder=ray_scan（Stage1 基准遍历），
-#    因为 grid_scan/anchor_scan 的扩散间距由 deep_sea_distance_threshold 推导，
-#    若同时扫描 finder 与阈值会耦合两个变量，违反控制变量原则（需求第八节）。
-#    阈值扫描须在 finder_sweep 确定最优遍历策略后，再以该策略锁定重跑（见脚本注释）。
+# ⚠️ Single-finder constraint: this file locks chunk_finder=ray_scan (Stage1 baseline traversal),
+#    because the diffusion spacing of grid_scan/anchor_scan is derived from deep_sea_distance_threshold,
+#    simultaneously sweeping both finder and threshold would couple two variables, violating the controlled-variable principle (Req. Sec. 8).
+#    The threshold sweep must be rerun with the optimal traversal strategy locked after finder_sweep determines it (see script comments).
 #
-# ⚠️ 含 distance_threshold_list 列表，由 run_ablation_stage2.py 遍历执行。
+# ⚠️ Contains distance_threshold_list; iterated by run_ablation_stage2.py.
 # ==============================================================================
 
-# --- 核心消融变量：待扫描的间距阈值列表（格）---
+# --- Core ablation variable: list of distance thresholds to sweep (cells) ---
 distance_threshold_list:
   - 416
   - 448
   - 480
   - 512
 
-# --- 感知层（继承 Stage1 最优，全部锁定）---
+# --- Perception layer (inherited from Stage1 optimum, all locked) ---
 temperature_enabled: true
 temperature_in_state: false
 temperature_guidance_enabled: true
@@ -32,11 +32,11 @@ temperature_precision: 2
 spatial_granularity: 32
 micro_strategy: "center_point"
 
-# --- 移动层（本文件锁定单一遍历策略）---
+# --- Movement layer (single traversal strategy locked in this file) ---
 chunk_finder: "ray_scan"
-# deep_sea_distance_threshold 由 distance_threshold_list 在运行时逐项注入
+# deep_sea_distance_threshold is injected item by item at runtime from distance_threshold_list
 
-# --- 奖励配置（继承基准，全部开启）---
+# --- Reward config (inherited baseline, all enabled) ---
 deep_sea_reward_enabled: true
 curiosity_reward_enabled: true
 penalty_reward_enabled: true
@@ -46,7 +46,7 @@ curiosity_weight: 1.0
 out_of_bounds_penalty: -10.0
 repeat_visit_penalty: -5.0
 
-# --- RL超参数（显式锁定）---
+# --- RL hyperparameters (explicitly locked) ---
 learning_rate: 0.1
 discount_factor: 0.95
 epsilon_start: 1.0
@@ -54,11 +54,11 @@ epsilon_end: 0.05
 epsilon_decay: 0.995
 replay_buffer_size: 8192
 
-# --- 阶段切换阈值（显式锁定）---
+# --- Stage transition thresholds (explicitly locked) ---
 stage2_min_deep_sea_points: 5
 stage3_min_deep_sea_points: 10
 
-# --- 全局限制 ---
+# --- Global limits ---
 max_queries_per_episode: 10000
 target_deep_sea_points: 40
 search_radius: 10000

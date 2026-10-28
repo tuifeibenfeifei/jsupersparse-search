@@ -1,11 +1,11 @@
 # src/traversal_strategies/diagonal_two_points.py
-"""[微观] 策略9：只查对角线上的2个点"""
+"""Micro strategy 9: query the two end points of the main diagonal."""
 from typing import List, Tuple
 from .base_strategy import BaseStrategy
 
 
 class DiagonalTwoPointsStrategy(BaseStrategy):
-    """对角线采样：仅查询区块主对角线上的2个端点"""
+    """Diagonal sampling: the two end points of the chunk main diagonal."""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

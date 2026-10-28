@@ -1,12 +1,12 @@
 # src/traversal_strategies/corner_points.py
-"""[微观] 策略2：只查区块四个角共4个点"""
+"""Micro strategy 2: query the four chunk corners."""
 from typing import List, Tuple
 from .base_strategy import BaseStrategy
 from ._utils import generate_corner_points
 
 
 class CornerPointsStrategy(BaseStrategy):
-    """区块四角采样：查询区块四个角落的坐标点"""
+    """Corner sampling: query the four corners of the chunk."""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

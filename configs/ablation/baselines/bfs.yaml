@@ -1,18 +1,18 @@
 # ==============================================================================
-# 文件: bfs.yaml
-# 描述: BFS 广度优先搜索基线参数配置
-# 说明: 基线算法独立于主框架（只依赖 L0），本文件为其唯一数值来源。
-#       与主框架共享的全局限制（预算/目标/半径/间距阈值）与主框架对齐，
-#       便于横向对比。
+# file: bfs.yaml
+# description: BFS breadth-first-search baseline parameter config
+# note: the baseline algorithm is independent of the main framework (depends only on L0); this file is its sole numerical source.
+#       global limits shared with the main framework (budget / target / radius / spacing threshold) are aligned with it,
+#       enabling horizontal comparison.
 # ==============================================================================
 
-# --- 与主框架对齐的全局限制 ---
+# --- global limits aligned with the main framework ---
 search_radius: 10000
 max_queries_per_episode: 10000
 target_deep_sea_points: 40
 deep_sea_distance_threshold: 416
 temperature_enabled: true
 
-# --- BFS 专属参数 ---
-# bfs_expand_step: BFS 邻域扩展步长（区块）。1 = 逐区块广度扫描
+# --- BFS-specific parameters ---
+# bfs_expand_step: BFS neighborhood-expansion step size (chunks). 1 = per-chunk breadth sweep
 bfs_expand_step: 1

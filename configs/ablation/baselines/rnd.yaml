@@ -1,18 +1,18 @@
 # ==============================================================================
-# 文件: rnd.yaml
-# 描述: RND（Random Network Distillation）基线算法参数配置
-# 说明: 基线算法独立于主框架（只依赖 L0 + 自带 numpy 网络），本文件为其
-#       唯一数值来源。RL 超参与主框架对齐，RND 专属参数单独列出。
+# file: rnd.yaml
+# description: RND (Random Network Distillation) baseline algorithm parameter config
+# note: the baseline algorithm is independent of the main framework (depends only on L0 + its own numpy network); this file is its
+#       sole numerical source. RL hyperparameters are aligned with the main framework; RND-specific parameters are listed separately.
 # ==============================================================================
 
-# --- 与主框架对齐的全局限制 ---
+# --- global limits aligned with the main framework ---
 search_radius: 10000
 max_queries_per_episode: 10000
 target_deep_sea_points: 40
 deep_sea_distance_threshold: 416
 temperature_enabled: true
 
-# --- RL 超参（与主框架 Stage1 基准值对齐，便于横向对比） ---
+# --- RL hyperparameters (aligned with the main framework Stage1 baseline for horizontal comparison) ---
 learning_rate: 0.1
 discount_factor: 0.95
 epsilon_start: 1.0
@@ -21,15 +21,15 @@ epsilon_decay: 0.995
 action_directions: 8
 action_steps: [1, 2, 4, 8]
 
-# --- 外在奖励数值（与主框架奖励模块默认值对齐） ---
+# --- extrinsic reward values (aligned with the main framework reward-module defaults) ---
 deep_sea_reward_value: 10.0
 out_of_bounds_penalty: -10.0
 repeat_visit_penalty: -5.0
 
-# --- RND 专属参数 ---
-# intrinsic_weight: 内在奖励（蒸馏误差）的总权重
+# --- RND-specific parameters ---
+# intrinsic_weight: total weight of the intrinsic reward (distillation error)
 intrinsic_weight: 1.0
-# rnd_hidden_size: 目标网络/预测器隐藏层宽度
+# rnd_hidden_size: hidden-layer width of the target network / predictor
 rnd_hidden_size: 32
-# rnd_learning_rate: 预测器 SGD 学习率
+# rnd_learning_rate: predictor SGD learning rate
 rnd_learning_rate: 0.01

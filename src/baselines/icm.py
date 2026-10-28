@@ -1,18 +1,18 @@
 """
 icm.py
-[ICM 基线] Intrinsic Curiosity Module（Pathak et al., 2017 的简化适配版）。
+[ICM baseline] Intrinsic Curiosity Module (simplified adaptation of Pathak et al., 2017).
 
-核心机制：
-    前向模型 f(s, a) -> ŝ'，内在奖励 = 前向预测误差 ||ŝ' - s'||²。
-    误差越大说明该转移越"出乎意料"，鼓励 agent 探索无法预测的区域，
-    从而克服稀疏外部奖励下的探索不足问题。
+Core mechanism:
+    Forward model f(s, a) -> ŝ', intrinsic reward = forward prediction error ||ŝ' - s'||².
+    Larger error means the transition is more "unexpected", encouraging the agent to explore unpredictable regions,
+    thereby overcoming the exploration insufficiency problem under sparse extrinsic rewards.
 
-与主框架的差异：
-    · 无温度导向偏向（温度仅作为前向模型输入特征之一）
-    · 内在奖励来自预测误差，外在奖励为深海发现(+10) / 越界(-10) / 重复(-5)
-    · 只依赖 L0 + 本文件自带的 numpy 网络，不依赖 main_algorithm.py
+Differences from the main framework:
+    · No temperature guidance bias (temperature is only one of the forward model input features)
+    · Intrinsic reward comes from prediction error; extrinsic reward is deep-sea discovery (+10) / out-of-bounds (-10) / repeat (-5)
+    · Only depends on L0 + the numpy network built into this file; does not depend on main_algorithm.py
 
-参考文献：Pathak, D., Agrawal, P., Efros, A. A., & Darrell, T. (2017).
+Reference: Pathak, D., Agrawal, P., Efros, A. A., & Darrell, T. (2017).
     Curiosity-driven Exploration by Self-supervised Prediction. ICML.
 """
 
@@ -24,10 +24,10 @@ from ._intrinsic_agent import IntrinsicModule, run_intrinsic_rl
 
 
 class _ICMModule(IntrinsicModule):
-    """ICM 内在奖励模块：前向模型预测误差"""
+    """ICM intrinsic reward module: forward model prediction error"""
 
     def __init__(self, config: dict, seed: Optional[int] = None):
-        # 状态特征维度 3 + 动作 one-hot 维度 num_actions
+        # State feature dimension 3 + action one-hot dimension num_actions
         num_directions = int(config.get("action_directions", 8))
         action_steps = list(config.get("action_steps", [1, 2, 4, 8]))
         num_actions = num_directions * len(action_steps)
@@ -53,14 +53,14 @@ class _ICMModule(IntrinsicModule):
 
 def run_icm(config: dict, seed: int) -> dict:
     """
-    执行一次 ICM 基线 episode。
+    Execute one ICM baseline episode.
 
     Args:
-        config: 配置字典（含 RL 超参、icm_hidden_size / icm_learning_rate /
-                intrinsic_weight 等 ICM 专属参数）
-        seed: 世界种子；算法随机性由 config["algo_seed"]（缺省取 seed）驱动
+        config: Configuration dict (including RL hyperparameters, icm_hidden_size / icm_learning_rate /
+                intrinsic_weight and other ICM-specific parameters)
+        seed: World seed; algorithmic randomness is driven by config["algo_seed"] (defaults to seed)
     Returns:
-        结果字典（格式与 run_single_episode 一致）
+        Result dict (format consistent with run_single_episode)
     """
     module = _ICMModule(config, seed=int(config.get("algo_seed", seed)))
     return run_intrinsic_rl(config, seed, module)

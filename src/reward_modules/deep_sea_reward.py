@@ -1,32 +1,32 @@
 
 """
 deep_sea_reward.py
-[奖励] 深海发现奖励模块
-核心职责：当发现新深海点（距所有已有深海点 ≥ 间距阈值）时给予正向奖励
-通过 config 中的布尔开关控制是否生效，所有数值参数由 YAML 注入
-严禁在此文件中硬编码任何奖励数值
+[Reward] Deep-sea discovery reward module
+Core responsibility: give positive reward when a new deep-sea point is found (distance to all existing deep-sea points ≥ distance threshold)
+Controlled on/off via boolean switch in config; all numerical parameters are injected from YAML
+Strictly prohibited from hardcoding any reward values in this file
 """
 
 from typing import Optional
 
 
 class DeepSeaReward:
-    """深海发现奖励计算器
+    """Deep-sea discovery reward calculator
 
-    当 AI 查询到一个新的深海点，且该点与所有已有深海点的欧氏距离均 ≥ 间距阈值时，
-    给予正向奖励。该奖励信号驱动 AI 主动寻找"新区域"的深海点，而非在已发现区域反复搜索。
+    When the AI queries a new deep-sea point and its Euclidean distance to all existing deep-sea points is ≥ the distance threshold,
+    a positive reward is given. This reward signal drives the AI to actively seek deep-sea points in "new regions" rather than repeatedly searching in already-discovered areas.
 
-    消融实验控制：
-        config["deep_sea_enabled"] = False  → 关闭此项奖励（Stage3 reward_no_deep 场景）
+    Ablation experiment control:
+        config["deep_sea_enabled"] = False  → disable this reward (Stage3 reward_no_deep scenario)
     """
 
     def __init__(self, config: Optional[dict] = None, **kwargs):
         """
         Args:
-            config: 配置字典，支持以下键：
-                - enabled (bool): 是否启用深海发现奖励，默认 True
-                - reward (float): 发现有效深海点时的奖励值，默认 10.0
-                - distance_threshold (float): 有效深海点最小间距阈值（格），默认 416.0
+            config: Configuration dict, supporting the following keys:
+                - enabled (bool): whether to enable deep-sea discovery reward, default True
+                - reward (float): reward value upon discovering a valid deep-sea point, default 10.0
+                - distance_threshold (float): minimum distance threshold between valid deep-sea points (cells), default 416.0
         """
         config = config or {}
         self._enabled = config.get("enabled", True)
@@ -35,14 +35,14 @@ class DeepSeaReward:
 
     def calculate(self, is_new_deep_sea: bool, distance_to_nearest: Optional[float] = None) -> float:
         """
-        计算深海发现奖励
+        Calculate deep-sea discovery reward
 
         Args:
-            is_new_deep_sea: 是否为有效新深海点（已通过 database._is_valid_point 的欧氏距离校验）
-            distance_to_nearest: 到最近已有深海点的欧氏距离（仅用于日志/调试，不影响计算）
+            is_new_deep_sea: whether this is a valid new deep-sea point (passed the Euclidean distance check in database._is_valid_point)
+            distance_to_nearest: Euclidean distance to the nearest existing deep-sea point (for logging/debugging only, does not affect computation)
 
         Returns:
-            奖励值（float）。未启用或非新深海点时返回 0.0
+            Reward value (float). Returns 0.0 when disabled or when not a new deep-sea point
         """
         if not self._enabled:
             return 0.0
