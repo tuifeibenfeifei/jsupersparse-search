@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""统一机制 × 场景 OAT 消融矩阵实验。
+"""Unified-mechanism x scenario OAT ablation matrix experiment.
 
-复用 ablation_detail.csv 已有行（full/AUC_off/multicluster_off），补跑缺失消融臂并记录 covered_cells；
---matrix 模式从 CSV 重算生成 peerj_oat_matrix.md。
+Reuses existing rows of ablation_detail.csv (full/AUC_off/multicluster_off), reruns missing ablation arms and records covered_cells;
+--matrix mode recomputes from the CSV to generate peerj_oat_matrix.md.
 """
 import csv
 import sys
@@ -38,7 +38,7 @@ def log(msg):
         f.write(line + "\n")
 
 
-# 基础配置（与 run_cross_ablation.py 完全一致）
+# base config (exactly the same as run_cross_ablation.py)
 MC_CFG = dict(
     target_points=40, max_queries=10000, min_dist_cells=2.0,
     stage2_min=3, stage3_min=5, stage3_jump_interval=30,
@@ -88,8 +88,8 @@ ORACLE_PATHS = {
     "chlorophyll": ROOT / "chlorophyll-search" / "data" / "oracle.npz",
 }
 
-# 待补跑新臂：(scenario, variant, overrides, algo_seeds)
-# CL 长杆先跑。
+# new arms to rerun: (scenario, variant, overrides, algo_seeds)
+# CL first (long pole).
 NEW_ARMS = [
     ("clouded_leopard", "blank_jump_off",      {"blank_jump": False},            SEEDS),
     ("clouded_leopard", "directed_jump_off",  {"directed_jump": False},          SEEDS),
@@ -120,7 +120,7 @@ def load_detail():
 
 
 def seed_from_old():
-    """首次运行：把 ablation_detail.csv 旧行导入，covered_cells 记 NA。"""
+    """First run: import the old rows of ablation_detail.csv, record covered_cells as NA."""
     rows = []
     with open(OLD_CSV, encoding="utf-8-sig") as f:
         for r in csv.DictReader(f):
@@ -143,7 +143,7 @@ def append_row(row):
         w.writerow(row)
 
 
-# 运行
+# run
 def expected_count(scenario, algo_seeds):
     n_world = len(MC_WORLD_SEEDS) if scenario == "minecraft" else 1
     return n_world * len(algo_seeds)
@@ -208,7 +208,7 @@ def run_all():
     log(f"=== run all done, total {(time.time()-t_all)/60:.1f} min ===")
 
 
-# 统计与矩阵
+# statistics and matrix
 def cliff_delta(a, b):
     a = np.asarray(a, float); b = np.asarray(b, float)
     n, m = len(a), len(b)
@@ -221,8 +221,8 @@ def cliff_delta(a, b):
 
 
 def one_sided_paired(a, b):
-    """返回 (diff_mean, diff_sd, p_two_sided, p_dir_gt, p_dir_lt, delta_cliff, paired_n).
-    a=off 臂, b=full 臂（同 seed 配对）。diff = a - b。"""
+    """Return (diff_mean, diff_sd, p_two_sided, p_dir_gt, p_dir_lt, delta_cliff, paired_n).
+    a=off arm, b=full arm (paired by the same seed). diff = a - b."""
     a = np.asarray(a, float); b = np.asarray(b, float)
     n = min(len(a), len(b)); a, b = a[:n], b[:n]
     d = a - b
@@ -246,7 +246,7 @@ def group_by(rows, scenario, variant):
 
 
 def pair_vectors(off_rows, full_rows, metric):
-    """按 (world_seed, algo_seed) 配对，返回 (off_vals, full_vals)。跳过 NA/空值。"""
+    """Pair by (world_seed, algo_seed), return (off_vals, full_vals). Skip NA/empty values."""
     key = lambda r: (int(r["world_seed"]), int(r["algo_seed"]))
 
     def _f(v):
@@ -270,7 +270,7 @@ def pair_vectors(off_rows, full_rows, metric):
 
 
 def cell_text(rows, scenario, variant):
-    """生成一个矩阵单元格文本：Δq mean±SD + Δp + Wilcoxon p + 方向。"""
+    """Generate one matrix cell text: Δq mean±SD + Δp + Wilcoxon p + direction."""
     off = group_by(rows, scenario, variant)
     full = group_by(rows, scenario, "full")
     if not off:
@@ -286,53 +286,53 @@ def cell_text(rows, scenario, variant):
         parts.append(f"Δcov={dc:+.0f}")
     else:
         parts.append("Δcov=NA")
-    # 显著性：取方向一致的单尾 p
+    # significance: take the one-sided p consistent with the effect direction
     if dq > 0:
         p_use = pgq
     else:
         p_use = plq
     sig = "**" if p_use < 0.01 else ("*" if p_use < 0.05 else "ns")
-    # 方向判定（有益=关闭后变差）
+    # direction judgment (beneficial = performance worsens after turning off)
     eff = []
     if p_use < 0.05:
         if dq > 0:
-            eff.append("关闭后更耗查询→机制省查询[有益]")
+            eff.append("more queries after turning off -> mechanism saves queries [beneficial]")
         else:
-            eff.append("关闭后更省查询→机制费查询[有害]")
+            eff.append("fewer queries after turning off -> mechanism wastes queries [harmful]")
     if p2p < 0.1:
         if dp < 0:
-            eff.append("关闭后命中下降[有益]")
+            eff.append("fewer hits after turning off [beneficial]")
         elif dp > 0:
-            eff.append("关闭后命中上升[有害]")
-    eff_txt = "; ".join(eff) if eff else "无显著差异[惰性]"
+            eff.append("more hits after turning off [harmful]")
+    eff_txt = "; ".join(eff) if eff else "no significant difference [inert]"
     parts.append(f"p={p_use:.3f}{sig}")
     parts.append(eff_txt)
     return "<br>".join(parts), dict(dq=dq, sdq=sdq, dp=dp, p=p_use, sig=sig,
                                     eff=eff_txt, n=nq, cdq=cdq)
 
 
-# 机制行定义：(行名, variant, {scenario: 标注说明 or None})
+# mechanism row definitions: (row name, variant, {scenario: annotation note or None})
 MECHANISM_ROWS = [
-    ("AUC 密度引导筛选关", "AUC_off",
+    ("AUC density-guidance screening off", "AUC_off",
      {"minecraft": None, "clouded_leopard": None, "chlorophyll": None}),
-    ("多簇（multicluster）关", "multicluster_off",
+    ("Multicluster off", "multicluster_off",
      {"minecraft": None, "clouded_leopard": None, "chlorophyll": None}),
-    ("定向远跳（directed_jump）关", "directed_jump_off",
-     {"minecraft": "—（MC_CFG 无 directed_jump 键，基线已 False）",
+    ("Directed long jump (directed_jump) off", "directed_jump_off",
+     {"minecraft": "- (MC_CFG has no directed_jump key; baseline is already False)",
       "clouded_leopard": None, "chlorophyll": None}),
-    ("导向空白跳（blank_jump）关", "blank_jump_off",
+    ("Guidance blank jump (blank_jump) off", "blank_jump_off",
      {"minecraft": None, "clouded_leopard": None, "chlorophyll": None}),
-    ("环状跟随（follow_mode）关", "follow_off",
+    ("Ring follow (follow_mode) off", "follow_off",
      {"minecraft": None,
-      "clouded_leopard": "—（SPP_CFG 无 follow_mode 键，基线已 False；2-seed 验证≡full）",
-      "chlorophyll": "—（CHL_CFG 无 follow_mode 键，基线已 False；20-seed 复现验证）"}),
-    ("Stage1 盲扫改 serpentine", "serpentine",
-     {"minecraft": "—（未在此场景测试）", "clouded_leopard": "—（未在此场景测试）",
+      "clouded_leopard": "- (SPP_CFG has no follow_mode key; baseline is already False; 2-seed verification identical to full)",
+      "chlorophyll": "- (CHL_CFG has no follow_mode key; baseline is already False; 20-seed reproduction verification)"}),
+    ("Stage1 blind sweep changed to serpentine", "serpentine",
+     {"minecraft": "- (not tested in this scenario)", "clouded_leopard": "- (not tested in this scenario)",
       "chlorophyll": None}),
-    ("分箱数 n_bins=4", "n_bins4",
-     {"minecraft": "—（未在此场景测试）", "clouded_leopard": None, "chlorophyll": None}),
-    ("分箱数 n_bins=16", "n_bins16",
-     {"minecraft": "—（未在此场景测试）", "clouded_leopard": None, "chlorophyll": None}),
+    ("Binning count n_bins=4", "n_bins4",
+     {"minecraft": "- (not tested in this scenario)", "clouded_leopard": None, "chlorophyll": None}),
+    ("Binning count n_bins=16", "n_bins16",
+     {"minecraft": "- (not tested in this scenario)", "clouded_leopard": None, "chlorophyll": None}),
 ]
 
 SCEN_ORDER = ["chlorophyll", "clouded_leopard", "minecraft"]
@@ -342,14 +342,14 @@ def build_matrix():
     rows = load_detail()
     log("=== building matrix ===")
     lines = []
-    lines.append("# 统一机制 × 场景 OAT 消融矩阵\n")
-    lines.append("## 1. 消融矩阵（单元格 = 相对 full 的 Δ = 关闭臂 − full，mean±SD；配对 Wilcoxon 单尾 p，α=0.05）\n")
-    header = "| 机制组件 \\ 场景 | " + " | ".join(SCEN_ORDER) + " |"
+    lines.append("# Unified-mechanism x scenario OAT ablation matrix\n")
+    lines.append("## 1. Ablation matrix (cell = Δ relative to full = off arm - full, mean±SD; paired Wilcoxon one-sided p, α=0.05)\n")
+    header = "| Mechanism component \\ Scenario | " + " | ".join(SCEN_ORDER) + " |"
     sep = "|" + "---|" * (len(SCEN_ORDER) + 1)
     lines.append(header)
     lines.append(sep)
 
-    # 收集每行每格的数值用于结论句
+    # collect the numbers per row per cell for conclusion sentences
     row_summary = {}
     for mech_name, variant, scen_note in MECHANISM_ROWS:
         cells = []
@@ -359,13 +359,13 @@ def build_matrix():
                 cells.append(scen_note[sc])
                 cell_stats[sc] = None
                 continue
-            # follow_off 在 CL 用 follow_off_verify；CHL follow_off 即等价 full 验证臂
+            # follow_off uses follow_off_verify on CL; CHL follow_off is the equivalent full verification arm
             v = variant
             if sc == "clouded_leopard" and variant == "follow_off":
                 v = "follow_off_verify"
             res = cell_text(rows, sc, v)
             if res is None:
-                cells.append("（未运行）")
+                cells.append("(not run)")
                 cell_stats[sc] = None
             else:
                 cells.append(res[0])
@@ -374,7 +374,7 @@ def build_matrix():
         row_summary[mech_name] = cell_stats
 
     lines.append("")
-    lines.append("## 2. 逐机制结论句（可写入论文）\n")
+    lines.append("## 2. Per-mechanism conclusion sentences (can go into the paper)\n")
     for mech_name, variant, scen_note in MECHANISM_ROWS:
         cs = row_summary[mech_name]
         sentence_bits = []
@@ -384,46 +384,46 @@ def build_matrix():
                 note = scen_note.get(sc, "")
                 continue
             dq, dp, p, sig = s["dq"], s["dp"], s["p"], s["sig"]
-            tag = "显著" if sig != "ns" else "不显著"
-            # 方向
+            tag = "significant" if sig != "ns" else "not significant"
+            # direction
             if s["sig"] != "ns":
-                direction = "关闭后查询增多、机制在节省查询上有益" if dq > 0 \
-                    else "关闭后查询减少、机制在浪费查询上有害"
+                direction = "more queries after turning off; mechanism is beneficial at saving queries" if dq > 0 \
+                    else "fewer queries after turning off; mechanism is harmful at wasting queries"
             else:
-                direction = "机制影响惰性"
+                direction = "mechanism effect is inert"
             sentence_bits.append(
-                f"- **{sc}**：关闭该机制后总查询变化 Δq={dq:+.0f}（p={p:.3f}，{tag}），"
-                f"命中变化 Δp={dp:+.2f}；{direction}。")
+                f"- **{sc}**: after turning off this mechanism, total query change Δq={dq:+.0f} (p={p:.3f}, {tag}), "
+                f"hit change Δp={dp:+.2f}; {direction}.")
         lines.append(f"### {mech_name}")
-        lines.extend(sentence_bits if sentence_bits else ["- 该机制在三个场景均为基线已关闭/未测试。"])
+        lines.extend(sentence_bits if sentence_bits else ["- This mechanism is either already off at baseline or untested across all three scenarios."])
         lines.append("")
 
-    lines.append("## 3. 运行口径说明\n")
-    lines.append("- **Seeds**：chlorophyll/clouded_leopard = 1 oracle × 20 algo seeds（101–120）；"
-                 "minecraft = 20 world seeds（1–20）× 20 algo seeds（101–120）= 400 runs/变体。")
-    lines.append("- **配对方式**：同一 algo_seed（minecraft 同时固定 world_seed）下关闭臂 vs full 逐 run 配对。")
-    lines.append("- **统计**：scipy.stats.wilcoxon 符号秩检验；p 取效应方向一致的单尾值"
-                 "（Δq>0 时检验 greater，Δq<0 时检验 less），显著性阈值 α=0.05（*）/0.01（**），"
-                 "另附 Cliff's δ（脚本内计算，矩阵主表以 p 为准）。")
-    lines.append("- **方向语义**：Δq=关闭臂−full 总查询；Δq<0 表示关闭后更省查询→机制费查询（有害）；"
-                 "Δq>0 表示关闭后更费查询→机制省查询（有益）。Δp<0 表示关闭后命中变少→机制有益。")
-    lines.append("- **基线已关说明**：MC_CFG 无 directed_jump 键、SPP_CFG/CHL_CFG 无 follow_mode 键，"
-                 "依据 species_agent.py 中 cfg.get(..., False) 的缺省值，对应机制在基线已关闭；"
-                 "CL follow_off 仅用 seed 101/102 验证与 full 逐位一致，CHL follow_off 用 20 seeds 复现验证。")
-    lines.append("- **covered_cells**：仅本次新跑臂记录；旧 full/AUC_off/multicluster_off 行"
-                 "（来自 results/ablation_cross/ablation_detail.csv）未记录 covered_cells，故 Δcov 多为 NA。")
-    lines.append("- **复现性口径**："
-                 "(a) chlorophyll 的 full 臂为本环境重跑 20 seeds（mean q=1605.25），"
-                 "与 10-03 ablation 记录（1596.25）相差 +0.6%，20 seeds 中 12 个漂移（≤±500 查询），"
-                 "已排除代码/配置/oracle/库版本/哈希序，判定为 10-03 运行的执行状态差异；"
-                 "故 CHL 列 full 与全部新变体同状态配对。"
-                 "(b) clouded_leopard full 抽查 seed 101–105 与旧记录 5/5 逐位一致，CL 列复用旧行。"
-                 "(c) minecraft 旧行经 world1 前 5 seed 核对逐位一致，MC 列复用旧行。")
+    lines.append("## 3. Run setup notes\n")
+    lines.append("- **Seeds**: chlorophyll/clouded_leopard = 1 oracle x 20 algo seeds (101-120); "
+                 "minecraft = 20 world seeds (1-20) x 20 algo seeds (101-120) = 400 runs/variant.")
+    lines.append("- **Pairing**: the off arm vs full are paired run-by-run under the same algo_seed (minecraft also fixes world_seed).")
+    lines.append("- **Statistics**: scipy.stats.wilcoxon signed-rank test; p takes the one-sided value consistent with the effect direction "
+                 "(test greater when Δq>0, test less when Δq<0); significance threshold α=0.05 (*)/0.01 (**), "
+                 "plus Cliff's δ (computed in-script; the main matrix table uses p).")
+    lines.append("- **Direction semantics**: Δq = off arm - full total queries; Δq<0 means fewer queries after turning off -> mechanism wastes queries (harmful); "
+                 "Δq>0 means more queries after turning off -> mechanism saves queries (beneficial). Δp<0 means fewer hits after turning off -> mechanism is beneficial.")
+    lines.append("- **Baseline-already-off note**: MC_CFG has no directed_jump key and SPP_CFG/CHL_CFG have no follow_mode key, "
+                 "based on the cfg.get(..., False) defaults in species_agent.py, the corresponding mechanisms are already off at baseline; "
+                 "CL follow_off uses only seeds 101/102 to verify bitwise identity with full; CHL follow_off is reproduced with 20 seeds.")
+    lines.append("- **covered_cells**: recorded only for the newly run arms; the old full/AUC_off/multicluster_off rows "
+                 "(from results/ablation_cross/ablation_detail.csv) did not record covered_cells, so Δcov is mostly NA.")
+    lines.append("- **Reproducibility notes**: "
+                 "(a) the chlorophyll full arm was rerun in this environment for 20 seeds (mean q=1605.25), "
+                 "which differs by +0.6% from the 10-03 ablation record (1596.25); 12 of 20 seeds drift (≤±500 queries), "
+                 "code/config/oracle/library-version/hash-order were ruled out; this is judged to be an execution-state difference in the 10-03 run; "
+                 "so the CHL-column full arm is paired with all new variants under the same state. "
+                 "(b) clouded_leopard full was spot-checked for seeds 101-105 and matches the old record 5/5 bitwise; the CL column reuses old rows. "
+                 "(c) the minecraft old rows were verified bitwise-consistent against world1's first 5 seeds; the MC column reuses old rows.")
 
     MATRIX_MD.write_text("\n".join(lines), encoding="utf-8")
     log(f"matrix written -> {MATRIX_MD}")
 
-    # 控制台自检锚点
+    # console self-check anchor
     log("=== anchor check ===")
     for sc, var, q_anchor, p_anchor in [
         ("chlorophyll", "full", 1596.25, None),

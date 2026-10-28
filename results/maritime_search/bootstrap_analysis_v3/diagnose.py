@@ -8,17 +8,17 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""任务二：海上搜救冷启动（motion bootstrap）根因诊断。
-- 从【快照】目录导入 SpeciesSearcher（并发安全，二轮版基线）；
-- MaritimeOracle 150x150，预算 600 queries；seeds 101-110，单进程顺序跑；
-- 产出 baseline.csv + artifacts.npz（供绘图）。
+"""Task 2: root-cause diagnosis of the maritime search-and-rescue cold start (motion bootstrap).
+- import SpeciesSearcher from the [snapshot] directory (concurrency-safe, second-round baseline);
+- MaritimeOracle 150x150, budget 600 queries; seeds 101-110, single process, sequential;
+- produces baseline.csv + artifacts.npz (for plotting).
 """
 import sys, csv, time
 from pathlib import Path
 import numpy as np
 
 ROOT = Path(REPO_ROOT)
-sys.path.insert(0, str(SNAP))                       # 快照 species-search
+sys.path.insert(0, str(SNAP))                       # snapshot species-search
 sys.path.insert(1, str(ROOT / "maritime-search"))
 
 from species_agent import SpeciesSearcher          # noqa: E402
@@ -30,7 +30,7 @@ NPZ = ROOT / "maritime-search" / "data" / "oracle.npz"
 
 SEEDS = list(range(101, 111))   # 101..110
 
-# config 照抄 run_maritime.py 的 CFG（任务指定值）
+# config copied verbatim from run_maritime.py CFG (task-specified values)
 CFG = dict(
     target_points=15, max_queries=600, min_dist_cells=1.0,
     stage1_grid_step=4,
@@ -43,7 +43,7 @@ CFG = dict(
 )
 
 def main():
-    print(f"=== MARITIME BOOTSTRAP DIAG v3 seeds={SEEDS} 预算={CFG['max_queries']} ===", flush=True)
+    print(f"=== MARITIME BOOTSTRAP DIAG v3 seeds={SEEDS} budget={CFG['max_queries']} ===", flush=True)
     oracle = MaritimeOracle(NPZ)
     print(f"oracle {oracle.nrows}x{oracle.ncols} R={oracle.R_km}km "
           f"P0_cell={oracle.P0_cell} cell_km={oracle.cell_km}", flush=True)
@@ -64,7 +64,7 @@ def main():
         searcher = SpeciesSearcher(oracle, CFG)
         res = searcher.run_episode(seed)
         dt = time.time() - t0
-        # 首个命中点的 query 时刻
+        # query time of the first hit
         found_t = list(searcher._found_t)
         first_hit_q = int(found_t[0]) if found_t else -1
         n_found_ts = len(found_t)

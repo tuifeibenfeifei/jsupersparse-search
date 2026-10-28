@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
-"""build_oracle.py — 构建稀有物种搜索黑盒 oracle（通用版，支持多物种）
-用法：
+"""build_oracle.py — Build rare species search black-box oracle (general version, supports multiple species)
+Usage:
   python build_oracle.py <species_subdir> <lon_min> <lon_max> <lat_min> <lat_max> <cell_deg> [max_unc]
-示例：
+Example:
   python build_oracle.py black_muntjac 117.5 119.5 27.5 30.5 0.025 5000
   python build_oracle.py clouded_leopard 84 99 25 30 0.05 5000
 
-输入：
-  - data/<species_subdir>/occurrences.csv   (GBIF 记录；列: lat, lon, uncertainty_m)
-  - data/worldclim/wc2.1_5m_bio/            (WorldClim v2.1 bioclim 5m GeoTIFF, 已解压)
-输出：
+Input:
+  - data/<species_subdir>/occurrences.csv   (GBIF records; columns: lat, lon, uncertainty_m)
+  - data/worldclim/wc2.1_5m_bio/            (WorldClim v2.1 bioclim 5m GeoTIFF, unzipped)
+Output:
   - data/<species_subdir>/oracle.npz
-黑盒语义：查询 (lat, lon) → oracle.query() 返回 (presence, cov_vector)
+Black-box semantics: query (lat, lon) → oracle.query() returns (presence, cov_vector)
 """
 import csv
 import sys
@@ -22,7 +22,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "data"
 
-# ---- 协变量清单（全部 19 个生物气候变量 BIO1-19） ----
+# ---- Covariate list (all 19 bioclimatic variables BIO1-19) ----
 COV_FILES = {
     "bio1": "wc2.1_5m_bio_1.tif",
     "bio2": "wc2.1_5m_bio_2.tif",
@@ -47,7 +47,7 @@ COV_FILES = {
 
 
 def load_occurrences(subdir: str, max_unc: float):
-    """读 data/<subdir>/occurrences.csv；可选过滤坐标不确定度 <= max_unc"""
+    """Read data/<subdir>/occurrences.csv; optionally filter coordinate uncertainty <= max_unc"""
     rows = []
     path = DATA / subdir / "occurrences.csv"
     with open(path, encoding="utf-8") as f:
@@ -74,11 +74,11 @@ def build():
     max_unc = float(sys.argv[7]) if len(sys.argv) > 7 else 0.0
 
     occ = load_occurrences(subdir, max_unc)
-    print(f"[info] {subdir}: occurrence 数 = {len(occ)} (unc<= {max_unc})")
+    print(f"[info] {subdir}: occurrence count = {len(occ)} (unc<= {max_unc})")
 
     ncols = int(round((lon_max - lon_min) / cell_deg))
     nrows = int(round((lat_max - lat_min) / cell_deg))
-    print(f"[info] 网格 {ncols}×{nrows} = {ncols * nrows} 单元")
+    print(f"[info] grid {ncols}×{nrows} = {ncols * nrows} cells")
 
     # presence
     presence = np.zeros((nrows, ncols), dtype=bool)
@@ -89,9 +89,9 @@ def build():
         i = min(int((lat - lat_min) / cell_deg), nrows - 1)
         presence[i, j] = True
     n_pres = int(presence.sum())
-    print(f"[info] presence 网格数 = {n_pres} ({n_pres / (ncols * nrows) * 100:.2f}%)")
+    print(f"[info] presence grid cells = {n_pres} ({n_pres / (ncols * nrows) * 100:.2f}%)")
 
-    # covariates（最近邻上采样）
+    # covariates (nearest-neighbor upsampling)
     cov_names = list(COV_FILES.keys())
     covs = np.full((len(cov_names), nrows, ncols), np.nan, dtype=np.float32)
     wc_dir = DATA / "worldclim" / "wc2.1_5m_bio"
@@ -100,11 +100,11 @@ def build():
     for k, name in enumerate(cov_names):
         fn = wc_dir / COV_FILES[name]
         if not fn.exists():
-            print(f"[warn] 缺少 {fn.name}，协变量 {name} 全 NaN")
+            print(f"[warn] missing {fn.name}, covariate {name} all NaN")
             continue
         with rasterio.open(fn) as ds:
-            row_top, col_left = ds.index(lon_min, lat_max)      # 左上角 (北, 西)
-            row_bottom, col_right = ds.index(lon_max, lat_min)  # 右下角 (南, 东)
+            row_top, col_left = ds.index(lon_min, lat_max)      # top-left (north, west)
+            row_bottom, col_right = ds.index(lon_max, lat_min)  # bottom-right (south, east)
             arr = ds.read(1, window=((row_top, row_bottom + 1), (col_left, col_right + 1)))
         h_src, w_src = arr.shape
         src_i = np.clip(
@@ -113,11 +113,11 @@ def build():
             np.round((lons_c - lon_min) / (lon_max - lon_min) * (w_src - 1)).astype(int), 0, w_src - 1)
         covs[k] = arr[np.ix_(src_i, src_j)]
         valid = np.isfinite(covs[k])
-        print(f"[info] {name}: 源像元 {h_src}×{w_src} → 目标网格 {nrows}×{ncols}, "
-              f"有效 {int(valid.sum())}/{nrows * ncols} "
-              f"范围[{np.nanmin(covs[k]):.1f},{np.nanmax(covs[k]):.1f}]")
+        print(f"[info] {name}: source pixels {h_src}×{w_src} → target grid {nrows}×{ncols}, "
+              f"valid {int(valid.sum())}/{nrows * ncols} "
+              f"range[{np.nanmin(covs[k]):.1f},{np.nanmax(covs[k]):.1f}]")
 
-    # 缺失填充（中值）
+    # Missing value fill (median)
     for k in range(len(cov_names)):
         m = np.nanmedian(covs[k])
         covs[k][~np.isfinite(covs[k])] = m
@@ -133,7 +133,7 @@ def build():
         cov_names=np.array(cov_names, dtype="U16"),
         study_poly=np.array([lon_min, lon_max, lat_min, lat_max]),
     )
-    print(f"[done] oracle 保存 → {out}")
+    print(f"[done] oracle saved → {out}")
     return 0
 
 

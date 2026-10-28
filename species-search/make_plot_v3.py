@@ -8,7 +8,7 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""make_plot_v3.py — v2 vs v3 优化对比图"""
+"""make_plot_v3.py — v2 vs v3 optimization comparison figure"""
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -32,32 +32,32 @@ if zh:
 OUT = Path(REPO_ROOT / "species-search/results")
 OUT.mkdir(parents=True, exist_ok=True)
 
-# 指标: 点数 / 覆盖网格 / 双集群率%   (v2, v3)
+# metrics: points / covered grid cells / dual-cluster rate%   (v2, v3)
 data = {
-    "黑麂": {"points": (15.50, 15.70), "covered": (1360, 2402), "dual": (65, 65)},
-    "云豹": {"points": (9.35, 7.95), "covered": (8449, 4770), "dual": (65, 35)},
+    "black muntjac": {"points": (15.50, 15.70), "covered": (1360, 2402), "dual": (65, 65)},
+    "clouded leopard": {"points": (9.35, 7.95), "covered": (8449, 4770), "dual": (65, 35)},
 }
-labels = ["找到点数", "覆盖网格数", "双集群率 (%)"]
+labels = ["points found", "covered grid cells", "dual-cluster rate (%)"]
 keys = ["points", "covered", "dual"]
 
 fig, axes = plt.subplots(1, 3, figsize=(14.0, 4.6))
 x = np.arange(2)
 w = 0.30
-colors = {"黑麂": "#4C78A8", "云豹": "#F2A900"}
+colors = {"black muntjac": "#4C78A8", "clouded leopard": "#F2A900"}
 
 for ax, key, lab in zip(axes, keys, labels):
-    for si, sp in enumerate(["黑麂", "云豹"]):
+    for si, sp in enumerate(["black muntjac", "clouded leopard"]):
         vals = data[sp][key]
         ax.bar(x + (si - 0.5) * w, vals, w, label=sp, color=colors[sp])
         for xi, v in zip(x + (si - 0.5) * w, vals):
             ax.text(xi, v + max(vals) * 0.03, f"{v:.0f}", ha="center", fontsize=9)
     ax.set_xticks(x)
-    ax.set_xticklabels(["v2\n(自动选择)", "v3\n(+冷启动+定向跳)"], fontsize=9.5)
+    ax.set_xticklabels(["v2\n(auto selection)", "v3\n(+ cold start + directed jump)"], fontsize=9.5)
     ax.set_title(lab, fontsize=12)
     ax.set_ylim(0, max(max(d[key]) for d in data.values()) * 1.25)
     ax.grid(alpha=0.3, axis="y")
-axes[0].legend(fontsize=9.5, title="物种")
-fig.suptitle("v3 三项优化（冷启动+定向远跳+覆盖指标） vs v2 自动选择（20 seeds 平均，输入19）",
+axes[0].legend(fontsize=9.5, title="species")
+fig.suptitle("v3 three optimizations (cold start + directed long jump + coverage metrics) vs v2 auto selection (mean over 20 seeds, input 19)",
              fontsize=13, y=1.02)
 fig.tight_layout()
 fig.savefig(OUT / "v2_vs_v3_optimization.png", dpi=150, bbox_inches="tight")

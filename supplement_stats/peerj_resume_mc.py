@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""续跑：MC worlds 7-10，追加到既有 detail CSV。"""
+"""Resume run: MC worlds 7-10, appended to the existing detail CSV."""
 import csv, random, sys, time
 from datetime import datetime
 from pathlib import Path
@@ -109,13 +109,13 @@ def turbo(env, rng, ctx, cold=12, pool=300, batch=8, init_radius=0.25, t0=None):
 
 def main():
     RC.TARGET = 40; RC.MAX_Q = 10000; RC.MIN_D = 2.0
-    # 已完成的 worlds
+    # worlds already completed
     done = set()
     with open(DETAIL_CSV, newline="", encoding="utf-8") as f:
         for r in csv.DictReader(f):
             if r["scenario"] == "minecraft" and r["method"] in ("gp_ucb", "turbo"):
                 done.add(int(r["world_seed"]))
-    log(f"[resume] 已完成 MC agent worlds: {sorted(done)}")
+    log(f"[resume] MC agent worlds already done: {sorted(done)}")
     for ws in range(7, 11):
         if ws in done:
             continue
@@ -138,7 +138,7 @@ def main():
                                               "points_found","total_queries","wall_time_s"])
             w.writerows(rows)
         log(f"  mc agents world_seed={ws} done (+{len(rows)} rows)")
-    log("[resume] 完成")
+    log("[resume] done")
 
 if __name__ == "__main__":
     main()

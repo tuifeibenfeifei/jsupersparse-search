@@ -6,11 +6,11 @@ for _ in range(8):
     if (REPO_ROOT / 'configs').is_dir():
         break
     REPO_ROOT = REPO_ROOT.parent
-"""补跑 TABLE XIV 敏感性扫描（seeds 101-110，n=10）。
+"""Supplementary run of the TABLE XIV sensitivity scans (seeds 101-110, n=10).
 
-coverage_budget_ratio: 0.05 / 0.08 / 0.12(default) / 0.20 / 0.30；
-weak_signal_min_auc: 0.50 / 0.53 / 0.52(default) / 0.55 / 0.60 / 0.70。
-输出 supplement_stats/chl_sensitivity_scan.csv（mean queries + change vs default）。
+coverage_budget_ratio: 0.05 / 0.08 / 0.12(default) / 0.20 / 0.30;
+weak_signal_min_auc: 0.50 / 0.53 / 0.52(default) / 0.55 / 0.60 / 0.70.
+Output: supplement_stats/chl_sensitivity_scan.csv (mean queries + change vs default).
 """
 import csv
 import sys
@@ -28,7 +28,7 @@ from species_agent import SpeciesSearcher  # noqa: E402
 OUT = ROOT / "supplement_stats" / "chl_sensitivity_scan.csv"
 LOG = ROOT / "supplement_stats" / "chl_sensitivity_scan.log"
 ORACLE_PATH = ROOT / "chlorophyll-search" / "data" / "oracle.npz"
-SEEDS = list(range(101, 111))  # 与 TABLE XIV 声明一致（n=10）
+SEEDS = list(range(101, 111))  # matches the TABLE XIV declaration (n=10)
 
 CHL_BASE = dict(
     target_points=20, max_queries=4000, min_dist_cells=1.0,
@@ -71,7 +71,7 @@ def main():
     oracle = SpeciesOracle(ORACLE_PATH)
     t0 = time.time()
 
-    # 默认行（shipped: coverage 0.12, auc 0.52）
+    # default row (shipped: coverage 0.12, auc 0.52)
     default_q = run(dict(CHL_BASE), SEEDS)
     def_mean = sum(default_q) / len(default_q)
     log(f"default (cov=0.12, auc=0.52) mean={def_mean:.1f} (n={len(default_q)})")
@@ -80,7 +80,7 @@ def main():
     rows.append(dict(param="default", value="0.12 / 0.52", mean_q=round(def_mean, 1),
                      change_pct="—", n=len(default_q)))
 
-    # coverage_budget_ratio 扫描（auc 保持 0.52）
+    # coverage_budget_ratio scan (auc held at 0.52)
     for v in COVERAGE_VALUES:
         if v == 0.12:
             continue
@@ -92,7 +92,7 @@ def main():
                          mean_q=round(m, 1), change_pct=round(chg, 1), n=len(qs)))
         log(f"coverage_budget_ratio={v} mean={m:.1f} chg={chg:+.1f}%")
 
-    # weak_signal_min_auc 扫描（coverage 保持 0.12）
+    # weak_signal_min_auc scan (coverage held at 0.12)
     for v in AUC_VALUES:
         if v == 0.52:
             continue

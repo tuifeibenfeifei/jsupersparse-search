@@ -8,12 +8,12 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""run_maritime.py — 海上搜救场景：复用 SpeciesSearcher 跑 seeds 101/102/103。
+"""run_maritime.py — maritime search-and-rescue scenario: reuses SpeciesSearcher to run seeds 101/102/103.
 
-- sys.path 导入 species-search 框架（SpeciesSearcher）与本目录 oracle（MaritimeOracle）。
-- 不修改框架本体。单进程顺序跑 episodes（严禁 ThreadPoolExecutor）。
-- 产出：results/maritime_search/maritime_detail.csv / maritime_summary.csv
-        + _artifacts.npz（供绘图）。
+- imports the species-search framework (SpeciesSearcher) and this directory's oracle (MaritimeOracle) via sys.path.
+- does not modify the framework itself. Episodes run sequentially in a single process (ThreadPoolExecutor is forbidden).
+- outputs: results/maritime_search/maritime_detail.csv / maritime_summary.csv
+        + _artifacts.npz (for plotting).
 """
 import csv
 import sys
@@ -36,7 +36,7 @@ NPZ = ROOT / "maritime-search" / "data" / "oracle.npz"
 
 SEEDS = [101, 102, 103]
 
-# ---- 实验 config（按任务指定；sparse_guidance 开启以启用 AUC 稀疏选参）----
+# ---- experiment config (as specified by the task; sparse_guidance enabled to turn on AUC sparse parameter selection) ----
 CFG = dict(
     target_points=15, max_queries=600, min_dist_cells=1.0,
     stage1_grid_step=4,
@@ -44,7 +44,7 @@ CFG = dict(
     multicluster=True, cluster_ring_ratio=10.0, cluster_idle_limit=12,
     blank_jump=True, coverage_budget_ratio=0.12, blank_far_ratio=0.3,
     post_jump_grace=6, saturate_mask=False, idle_blank_mix=8,
-    # AUC 稀疏选参（框架默认值，与定稿一致）
+    # AUC sparse parameter selection (framework defaults, consistent with the final version)
     sparse_guidance=True, sparse_topk=6, sparse_min_pos=5, recalc_every=20,
     stage2_min=3, stage3_min=5, stage3_jump_interval=30,
 )
@@ -59,7 +59,7 @@ def log(msg):
 
 def main():
     log("=" * 64)
-    log(f"海上搜救实验启动，seeds={SEEDS}，单进程顺序跑，预算={CFG['max_queries']}")
+    log(f"maritime search-and-rescue experiment started, seeds={SEEDS}, sequential single-process run, budget={CFG['max_queries']}")
     oracle = MaritimeOracle(NPZ)
     log(f"oracle {oracle.nrows}x{oracle.ncols}, covs={oracle.covs.shape}, "
         f"R={oracle.R_km}km, P0={oracle.P0_cell}")
@@ -69,7 +69,7 @@ def main():
     conv_by_seed = {}
     visited101 = np.zeros((oracle.nrows, oracle.ncols), dtype=np.uint8)
     found101 = None
-    feature_snapshots = []   # 所有 seed 的最后一次 AUC 选参记录
+    feature_snapshots = []   # the last AUC parameter-selection record of every seed
 
     for seed in SEEDS:
         t0 = time.time()
@@ -82,7 +82,7 @@ def main():
         log(f"seed={seed} pts={res['points_found']} q={res['total_queries']} "
             f"covered={res['covered_cells']} stage={res['final_stage']} "
             f"t={dt:.1f}s")
-        # 最后一次特征选择快照
+        # snapshot of the last feature selection
         fl = res["feature_log"]
         if fl:
             feature_snapshots.append((seed, fl[-1]))
@@ -101,7 +101,7 @@ def main():
                     "covered_cells", "final_stage"])
         w.writerows(detail_rows)
 
-    # ---- summary CSV（均值±std）----
+    # ---- summary CSV (mean +/- std) ----
     n = len(detail_rows)
     pts = [r[1] for r in detail_rows]
     qs = [r[2] for r in detail_rows]
@@ -115,20 +115,20 @@ def main():
                     min(qs), max(qs)])
         w.writerow(["covered_cells", round(np.mean(cov), 1), round(np.std(cov), 1),
                     min(cov), max(cov)])
-    log(f"汇总: pts={np.mean(pts):.2f}±{np.std(pts):.2f}  "
+    log(f"summary: pts={np.mean(pts):.2f}+/-{np.std(pts):.2f}  "
         f"q={np.mean(qs):.0f}  covered={np.mean(cov):.0f}")
 
-    # ---- AUC 选参结论（跨 seed 汇总最后一次快照）----
-    log("--- AUC 选参最后快照 (n_q, n_pos, [(cov_idx, weight)...]) ---")
+    # ---- AUC parameter-selection conclusion (aggregate the last snapshot across seeds) ----
+    log("--- last AUC parameter-selection snapshot (n_q, n_pos, [(cov_idx, weight)...]) ---")
     agg = {}
     for seed, (nq, npos, keep) in feature_snapshots:
         log(f"  seed={seed} n_q={nq} n_pos={npos} keep={keep}")
         for k, wv in keep:
             agg.setdefault(k, []).append(wv)
     auc_table = {k: float(np.mean(v)) for k, v in agg.items()}
-    log(f"  跨 seed 平均权重: {sorted(auc_table.items(), key=lambda x: -x[1])}")
+    log(f"  cross-seed average weights: {sorted(auc_table.items(), key=lambda x: -x[1])}")
 
-    # ---- 存绘图 artifacts ----
+    # ---- save plotting artifacts ----
     conv_arr = {}
     for seed, conv in conv_by_seed.items():
         conv_arr[f"q_{seed}"] = np.array([c[0] for c in conv])

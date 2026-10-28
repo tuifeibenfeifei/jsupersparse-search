@@ -8,17 +8,17 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""run_mc_framework.py — 用最新五轮优化框架跑 Minecraft 深海场景。
+"""run_mc_framework.py — Run the latest 5-round optimized framework on the Minecraft deep-sea scenario.
 
-口径（与三基线 run_mc_baselines.py 完全对齐）：
-  - 世界种子 1..20
-  - 每世界种子 × 每 algo_seed 跑 1 个 episode
+Convention (fully aligned with the three baselines run_mc_baselines.py):
+  - World seeds 1..20
+  - Each world seed × each algo_seed runs 1 episode
   - target=40, max_queries=10000, min_dist_cells=2.0
-  - cov_indices=[0,1,2,3,4]（5 个全用，让 presence-AUC 自动稀疏化）
+  - cov_indices=[0,1,2,3,4] (use all 5; let Presence-AUC sparsify automatically)
 
-输出 results/minecraft_search/：
-  framework_mc_detail.csv   逐 run 明细
-  framework_mc_summary.csv  汇总
+Output results/minecraft_search/:
+  framework_mc_detail.csv   per-run detail
+  framework_mc_summary.csv   summary
 """
 import csv
 import sys
@@ -38,12 +38,12 @@ OUT.mkdir(parents=True, exist_ok=True)
 LOG = OUT / "progress.log"
 
 WORLD_SEEDS = list(range(1, 21))
-ALGO_SEEDS = list(range(101, 121))  # 20 次重复
+ALGO_SEEDS = list(range(101, 121))  # 20 repetitions
 TARGET = 40
 MAX_Q = 10000
 MIN_D = 2.0
 
-# 五轮推荐配置：所有机制开启，但静态场景下 time_decay/mutation/follow 不会触发
+# 5-round recommended config: all mechanisms enabled, but time_decay/mutation/follow will not trigger in static scenarios
 CFG = dict(
     target_points=TARGET,
     max_queries=MAX_Q,
@@ -57,13 +57,13 @@ CFG = dict(
     guidance_on=True,
     cov_in_state=True,
     cov_indices=[0, 1, 2, 3, 4],
-    # 多簇分追（A11）
+    # Multi-cluster split pursuit (A11)
     multicluster=True,
     cluster_ring_ratio=10.0,
     cluster_idle_limit=12,
     blank_jump=True,
     coverage_budget_ratio=0.12,
-    # 五轮机制（静态场景下不触发，但保持配置一致）
+    # 5-round mechanisms (do not trigger in static scenarios, but kept for config consistency)
     time_decay=True,
     decay_mode="exp",
     decay_tau=300.0,
@@ -84,7 +84,7 @@ def log(msg):
 
 def main():
     t_all = time.time()
-    log(f"==== 框架 Minecraft 深海对比: world_seeds={WORLD_SEEDS[0]}-{WORLD_SEEDS[-1]} "
+    log(f"==== Framework Minecraft deep-sea comparison: world_seeds={WORLD_SEEDS[0]}-{WORLD_SEEDS[-1]} "
         f"algo_seeds={ALGO_SEEDS[0]}-{ALGO_SEEDS[-1]} target={TARGET} budget={MAX_Q}")
 
     rows = []
@@ -102,10 +102,10 @@ def main():
             if len(rows) % 20 == 0:
                 avg_pts = sum(r[2] for r in rows) / len(rows)
                 avg_q = sum(r[3] for r in rows) / len(rows)
-                log(f"  进度 {len(rows)}/{len(WORLD_SEEDS)*len(ALGO_SEEDS)}  "
-                    f"当前均点={avg_pts:.1f} 均查询={avg_q:.0f}")
+                log(f"  Progress {len(rows)}/{len(WORLD_SEEDS)*len(ALGO_SEEDS)}  "
+                    f"current avg pts={avg_pts:.1f} avg queries={avg_q:.0f}")
 
-    # 逐 run 明细
+    # Per-run detail
     det = OUT / "framework_mc_detail.csv"
     with open(det, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
@@ -128,8 +128,8 @@ def main():
                     round(hit, 3), min_p, max_p, n])
 
     log(f"  framework  pts={avg_pts:.2f}/{TARGET} q={avg_q:.0f} "
-        f"达标率={hit*100:.0f}%  (总耗时 {(time.time()-t_all)/60:.1f} min)")
-    log(f"==== 完成 -> {OUT}")
+        f"hit rate={hit*100:.0f}%  (total time {(time.time()-t_all)/60:.1f} min)")
+    log(f"==== Done -> {OUT}")
 
 
 if __name__ == "__main__":

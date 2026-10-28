@@ -8,12 +8,12 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""make_plots.py — 复跑 3 seeds 采集作图数据，出 4 张图（中文 matplotlib）。
-图：
-  1) 真漂移轨迹 + 发现点 + 已访问格叠图（seed101 为主，并排 seed102）
-  2) 累计发现点数 vs 查询数（3 seeds）
-  3) AUC 选出的协变量权重条形图
-  4) 访问热力图（seed101）
+"""make_plots.py - rerun 3 seeds to collect plot data, produce 4 figures (English matplotlib).
+Figures:
+  1) True drift trajectory + discovered points + visited cells overlay (seed101 main, side-by-side with seed102)
+  2) Cumulative discovered points vs query count (3 seeds)
+  3) Bar chart of AUC-selected covariate weights
+  4) Visitation heatmap (seed101)
 """
 import sys
 from pathlib import Path
@@ -37,7 +37,7 @@ from run_maritime import CFG, SEEDS, NPZ             # noqa: E402
 OUT = ROOT / "results" / "maritime_search"
 oracle = MaritimeOracle(NPZ)
 
-# ---- 复跑采集 ----
+# ---- Rerun collection ----
 visited, found, conv = {}, {}, {}
 for seed in SEEDS:
     s = SpeciesSearcher(oracle, CFG)
@@ -55,52 +55,52 @@ traj = oracle.traj                       # (601,2) km [x,y]
 P0 = oracle.P0_cell                      # (i,j)
 cell = oracle.cell_km
 
-# ================= 图1：轨迹叠图（左 seed101 / 右 seed102）=================
+# ================= Fig 1: Trajectory overlay (left seed101 / right seed102) =================
 fig, axes = plt.subplots(1, 2, figsize=(13, 6), sharex=True, sharey=True)
 for ax, seed in zip(axes, [101, 102]):
-    # 已访问格（散点，格中心 km）
+    # Visited cells (scatter, cell center in km)
     vi, vj = np.where(visited[seed] > 0)
     ax.scatter((vj + 0.5) * cell, (vi + 0.5) * cell, s=4, c="lightgray",
-               alpha=0.5, label="已访问格")
-    # 真漂移轨迹
-    ax.plot(traj[:, 0], traj[:, 1], "-", c="tab:blue", lw=1.8, label="真漂移轨迹")
-    ax.plot(traj[0, 0], traj[0, 1], "o", c="black", ms=8, label="失事点 P0")
-    ax.plot(traj[-1, 0], traj[-1, 1], "D", c="tab:blue", ms=7, label="300h 后位置")
-    # 发现点
+               alpha=0.5, label="Visited cells")
+    # True drift trajectory
+    ax.plot(traj[:, 0], traj[:, 1], "-", c="tab:blue", lw=1.8, label="True drift trajectory")
+    ax.plot(traj[0, 0], traj[0, 1], "o", c="black", ms=8, label="Wreck point P0")
+    ax.plot(traj[-1, 0], traj[-1, 1], "D", c="tab:blue", ms=7, label="Position after 300h")
+    # Discovered points
     if found[seed]:
         fc = np.array(found[seed])
         ax.scatter((fc[:, 1] + 0.5) * cell, (fc[:, 0] + 0.5) * cell,
                    s=60, marker="*", c="red", edgecolors="k", zorder=5,
-                   label=f"发现点 n={len(fc)}")
+                   label=f"Discovered points n={len(fc)}")
     nf = len(found[seed])
-    ax.set_title(f"seed {seed}：发现 {nf} 点", fontsize=12)
+    ax.set_title(f"seed {seed}: {nf} points found", fontsize=12)
     ax.set_xlabel("x (km)"); ax.set_ylabel("y (km)")
     ax.set_xlim(0, 300); ax.set_ylim(0, 300)
     ax.set_aspect("equal"); ax.grid(alpha=0.3)
 axes[0].legend(loc="upper left", fontsize=8)
-fig.suptitle("海上搜救：真漂移轨迹 + UAV 已访问格 + 发现点（物理仿真）",
+fig.suptitle("Maritime search and rescue: true drift trajectory + UAV visited cells + discovered points (physics simulation)",
              fontsize=13)
 fig.tight_layout()
 fig.savefig(OUT / "fig1_trajectory_overlay.png", dpi=130)
 plt.close(fig)
 
-# ================= 图2：累计发现 vs 查询数 =================
+# ================= Fig 2: Cumulative found vs query count =================
 fig, ax = plt.subplots(figsize=(8, 5))
 colors = {101: "tab:gray", 102: "tab:red", 103: "tab:green"}
 for seed in SEEDS:
     q = [c[0] for c in conv[seed]]
     f = [c[1] for c in conv[seed]]
     ax.plot(q, f, "-o", ms=3, color=colors[seed], label=f"seed {seed}")
-ax.axhline(15, ls="--", c="k", alpha=0.5, label="目标 15 点")
-ax.set_xlabel("查询数（架次，= 时间 0.5h/架次）")
-ax.set_ylabel("累计发现点数")
-ax.set_title("累计发现点数 vs 查询数（3 seeds）")
+ax.axhline(15, ls="--", c="k", alpha=0.5, label="Target 15 points")
+ax.set_xlabel("Query count (sorties, = time 0.5h/sortie)")
+ax.set_ylabel("Cumulative discovered points")
+ax.set_title("Cumulative discovered points vs query count (3 seeds)")
 ax.grid(alpha=0.3); ax.legend()
 fig.tight_layout()
 fig.savefig(OUT / "fig2_cumulative_found.png", dpi=130)
 plt.close(fig)
 
-# ================= 图3：AUC 选出的协变量权重 =================
+# ================= Fig 3: AUC-selected covariate weights =================
 d = np.load(OUT / "_artifacts.npz", allow_pickle=True)
 akeys = d["auc_keys"]; avals = d["auc_vals"]
 fig, ax = plt.subplots(figsize=(9, 5))
@@ -110,23 +110,23 @@ bars = ax.barh([labels[i] for i in order], [avals[i] for i in order],
                color="teal")
 for i, idx in enumerate(order):
     ax.text(avals[idx] + 0.005, i, f"{avals[idx]:.3f}", va="center", fontsize=9)
-ax.set_xlabel("AUC 稀疏选参权重（(AUC-0.5)^2×4，跨 seed 均值）")
-ax.set_title("AUC 在线选出的协变量（权重降序；仅 seed102 有足够正样本触发）")
+ax.set_xlabel("AUC sparse selection weight ((AUC-0.5)^2*4, mean across seeds)")
+ax.set_title("AUC online-selected covariates (weights descending; only seed102 has enough positive samples to trigger)")
 ax.grid(axis="x", alpha=0.3)
 fig.tight_layout()
 fig.savefig(OUT / "fig3_auc_selected.png", dpi=130)
 plt.close(fig)
 
-# ================= 图4：访问热力图（seed101）=================
+# ================= Fig 4: Visitation heatmap (seed101) =================
 fig, ax = plt.subplots(figsize=(7, 6))
 hm = ax.imshow(visited[101], origin="lower", cmap="Blues",
                extent=[0, 300, 0, 300], alpha=0.6)
-ax.plot(traj[:, 0], traj[:, 1], "-", c="tab:red", lw=1.8, label="真漂移轨迹")
+ax.plot(traj[:, 0], traj[:, 1], "-", c="tab:red", lw=1.8, label="True drift trajectory")
 ax.plot(traj[0, 0], traj[0, 1], "o", c="black", ms=8, label="P0")
-ax.set_title("seed101 访问热力图（蓝=已探测格）——盲扫格网与漂移带未相遇")
+ax.set_title("seed101 visitation heatmap (blue=probed cells) - blind sweep grid and drift band did not intersect")
 ax.set_xlabel("x (km)"); ax.set_ylabel("y (km)")
 ax.legend(loc="upper left", fontsize=9)
-fig.colorbar(hm, ax=ax, label="已探测")
+fig.colorbar(hm, ax=ax, label="Probed")
 fig.tight_layout()
 fig.savefig(OUT / "fig4_visited_heatmap.png", dpi=130)
 plt.close(fig)

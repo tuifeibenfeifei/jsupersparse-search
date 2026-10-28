@@ -8,14 +8,14 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""scan_spread_ablation.py — 改进1（冷启动盲扫铺开）验收。
+"""scan_spread_ablation.py — Improvement 1 (cold-start blind sweep spread) validation.
 
-合成"目标云列带"场景：120x120 网格，稀疏正样本集中在少数列带，
-小预算(500)下对比 stage1_scan_mode=serpentine（旧蛇形光栅）vs spread（新铺开）。
-agent 的起始格由 seed 决定（随机列），serpentine 只扫起始列附近几列，
-spread 则把首批查询均匀撒到全列轴。seeds 101-120 × 20 对比 points_found。
+Synthetic "target cloud column bands" scenario: 120x120 grid, sparse positives concentrated in a few column bands,
+Under small budget (500), compare stage1_scan_mode=serpentine (old serpentine raster) vs spread (new spread).
+Agent's starting cell is determined by seed (random column); serpentine only scans a few columns near the start,
+while spread distributes the first batch of queries evenly across the full column axis. seeds 101-120 × 20 compare points_found.
 
-用法: python -X utf8 scan_spread_ablation.py
+Usage: python -X utf8 scan_spread_ablation.py
 """
 import csv
 import sys
@@ -36,27 +36,27 @@ OUT.mkdir(parents=True, exist_ok=True)
 plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei"]
 plt.rcParams["axes.unicode_minus"] = False
 
-# ---------------- 合成 oracle：目标云集中在少数列带 ----------------
+# ---------------- Synthetic oracle: target cloud concentrated in a few column bands ----------------
 NROWS = 120
 NCOLS = 120
-# 三条纵向目标列带（列区间），行方向散布稀疏正样本
+# Three vertical target column bands (column ranges), sparse positives scattered in row direction
 BAND_COLS = [(18, 24), (58, 64), (96, 102)]
 SEED_BUILD = 7
 
 
 class BandOracle:
-    """接口对齐 SpeciesOracle：nrows/ncols/covs/in_bounds/query_cell/reset_counter。"""
+    """Interface aligned with SpeciesOracle: nrows/ncols/covs/in_bounds/query_cell/reset_counter."""
 
     def __init__(self):
         self.nrows = NROWS
         self.ncols = NCOLS
         rng = np.random.RandomState(SEED_BUILD)
-        # 协变量：两个平滑场（Stage2 导向用，Stage1 盲扫不依赖）
+        # Covariates: two smooth fields (used for Stage2 guidance; Stage1 blind sweep does not depend on them)
         yy, xx = np.mgrid[0:NROWS, 0:NCOLS]
         cov0 = np.sin(xx / 18.0) + 0.3 * rng.randn(NROWS, NCOLS)
         cov1 = np.cos(yy / 22.0) + 0.3 * rng.randn(NROWS, NCOLS)
         self.covs = np.stack([cov0.astype(np.float32), cov1.astype(np.float32)])
-        # presence：三条列带内稀疏撒点（带内密度较高，带外为 0）
+        # presence: sparse points within three column bands (higher density inside bands, 0 outside)
         self.presence = np.zeros((NROWS, NCOLS), dtype=bool)
         for (c0, c1) in BAND_COLS:
             for j in range(c0, c1 + 1):
@@ -106,14 +106,14 @@ def run_mode(mode):
 
 
 def main():
-    print("构建目标云列带 oracle：", BAND_COLS, flush=True)
+    print("Building target cloud column band oracle:", BAND_COLS, flush=True)
     demo = BandOracle()
     n_pos = int(demo.presence.sum())
-    print(f"  正样本总数={n_pos}  稀疏度={n_pos/(NROWS*NCOLS)*100:.2f}%", flush=True)
+    print(f"  Total positives={n_pos}  Sparsity={n_pos/(NROWS*NCOLS)*100:.2f}%", flush=True)
 
-    print("\n跑 serpentine ...", flush=True)
+    print("\nRunning serpentine ...", flush=True)
     serp = run_mode("serpentine")
-    print("跑 spread ...", flush=True)
+    print("Running spread ...", flush=True)
     spread = run_mode("spread")
 
     sp = [r[1] for r in serp]
@@ -124,9 +124,9 @@ def main():
     hitrate_sp = sum(1 for x in sp if x > 0) / len(sp)
     hitrate_dp = sum(1 for x in dp if x > 0) / len(dp)
 
-    print(f"\n=== serpentine: mean points_found={m_sp:.2f}  命中率={hitrate_sp*100:.0f}% ===", flush=True)
-    print(f"=== spread    : mean points_found={m_dp:.2f}  命中率={hitrate_dp*100:.0f}% ===", flush=True)
-    print(f"=== 相对提升 = {rel:+.1f}%   命中率比 = {hitrate_dp/max(hitrate_sp,1e-9):.2f}x ===", flush=True)
+    print(f"\n=== serpentine: mean points_found={m_sp:.2f}  hit rate={hitrate_sp*100:.0f}% ===", flush=True)
+    print(f"=== spread    : mean points_found={m_dp:.2f}  hit rate={hitrate_dp*100:.0f}% ===", flush=True)
+    print(f"=== Relative improvement = {rel:+.1f}%   hit rate ratio = {hitrate_dp/max(hitrate_sp,1e-9):.2f}x ===", flush=True)
 
     # CSV
     with open(OUT / "scan_spread_ablation.csv", "w", newline="", encoding="utf-8-sig") as f:
@@ -140,16 +140,16 @@ def main():
         w.writerow(["HIT_RATE", f"{hitrate_sp:.2f}", "", "", "", f"{hitrate_dp:.2f}", "", "", ""])
         w.writerow(["REL_IMPROVE_PCT", f"{rel:.1f}", "", "", "", "", "", "", ""])
 
-    # 图：箱线 + 种子序列折线
+    # Figure: boxplot + seed sequence line plot
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
     axes[0].boxplot([sp, dp], labels=["serpentine", "spread"], showmeans=True)
     axes[0].set_ylabel("points_found")
-    axes[0].set_title(f"盲扫模式对比（{NROWS}x{NCOLS}，预算500，seeds101-120）")
-    axes[1].plot(SEEDS, sp, "o-", label=f"serpentine 均值{m_sp:.1f}")
-    axes[1].plot(SEEDS, dp, "s-", label=f"spread 均值{m_dp:.1f}")
+    axes[0].set_title(f"Blind sweep mode comparison ({NROWS}x{NCOLS}, budget 500, seeds 101-120)")
+    axes[1].plot(SEEDS, sp, "o-", label=f"serpentine mean {m_sp:.1f}")
+    axes[1].plot(SEEDS, dp, "s-", label=f"spread mean {m_dp:.1f}")
     axes[1].set_xlabel("seed")
     axes[1].set_ylabel("points_found")
-    axes[1].set_title(f"逐种子命中（相对提升 {rel:+.0f}%）")
+    axes[1].set_title(f"Per-seed hits (relative improvement {rel:+.0f}%)")
     axes[1].legend()
     fig.tight_layout()
     fig.savefig(OUT / "scan_spread_ablation.png", dpi=130)

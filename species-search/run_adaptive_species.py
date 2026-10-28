@@ -8,11 +8,11 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""run_adaptive_species.py — A11 自适应配置对比实验（黑麂 + 云豹）
-A11_adaptive：guidance_on + AUC 稀疏 + adaptive（在线诊断：多簇→聚类分散导向，
-              单簇→全局导向）+ 定向远跳。不依赖人工指定 cluster_guidance。
-对比基准：从现有 ablation summary 读取 A0(骨架)/A2(稀疏)/A10(聚类+定向)。
-输出：results/species_search/adaptive/{species}_adaptive_summary.csv
+"""run_adaptive_species.py — A11 adaptive config comparison experiment (black muntjac + clouded leopard)
+A11_adaptive: guidance_on + AUC sparsity + adaptive (online diagnosis: multi-cluster -> cluster-dispersed guidance,
+              single-cluster -> global guidance) + directed long jump. Does not rely on manually specifying cluster_guidance.
+Comparison baselines: read A0 (skeleton) / A2 (sparsity) / A10 (cluster + directed) from the existing ablation summary.
+Output: results/species_search/adaptive/{species}_adaptive_summary.csv
 """
 import csv
 import sys
@@ -42,12 +42,12 @@ BASE = dict(
     sparse_guidance=True, sparse_topk=6, sparse_min_pos=5,
 )
 A11 = dict(BASE, adaptive=True, directed_jump=True)
-A11["cov_indices"] = list(range(19))   # 全 19 协变量输入
+A11["cov_indices"] = list(range(19))   # all 19 covariates as input
 SEEDS = list(range(101, 121))
 
 
 def two_cluster_rate(oracle, found_cells, n_bins=8):
-    """粗略双集群判定：分箱后是否覆盖 ≥2 个不相邻箱带（与消融口径一致）"""
+    """rough dual-cluster determination: after binning, whether >=2 non-adjacent bin bands are covered (consistent with the ablation convention)"""
     if not found_cells:
         return 0.0
     bs_i = max(1, oracle.nrows // n_bins)
@@ -59,7 +59,7 @@ def two_cluster_rate(oracle, found_cells, n_bins=8):
 
 
 def main():
-    print(f"[adaptive] A11 x {len(SEEDS)} seeds, 两物种", flush=True)
+    print(f"[adaptive] A11 x {len(SEEDS)} seeds, two species", flush=True)
     for name, npz in SPECIES:
         oracle = SpeciesOracle(npz)
         pts, qrs, covs, two = [], [], [], 0
@@ -70,8 +70,8 @@ def main():
             two += two_cluster_rate(oracle, res["found_cells"])
         n = len(SEEDS)
         mean = lambda x: sum(x) / n
-        print(f"  {name:16s} 点 {mean(pts):6.2f} | 查询 {mean(qrs):6.0f} | 覆盖 {mean(covs):6.0f} | "
-              f"双集群 {100.0*two/n:5.1f}%", flush=True)
+        print(f"  {name:16s} pts {mean(pts):6.2f} | queries {mean(qrs):6.0f} | covered {mean(covs):6.0f} | "
+              f"dual cluster {100.0*two/n:5.1f}%", flush=True)
         with open(OUT / f"{name}_adaptive_summary.csv", "w", newline="", encoding="utf-8") as f:
             w = csv.writer(f)
             w.writerow(["config", "mean_points", "mean_queries", "mean_covered", "two_cluster_rate%"])

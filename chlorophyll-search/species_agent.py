@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-"""species_agent.py — 黑盒物种搜索框架（用户框架的物种版迁移）
-对应 deep-sea-exploration/src/main_algorithm.py 的结构映射：
-    cubiomes_wrapper  → oracle.SpeciesOracle（黑盒查询 温度→协变量, 深海→出现）
-    database          → oracle 内 presence + 分散约束
-    state_manager     → 协变量分箱 + 区域（cov_in_state）
-    Stage1/2/3        → 盲搜 → 参数积累 → 参数导向+Q-learning+远跳
-    temperature_guidance → 分箱密度导向（用已查询网格统计"参数区间→出现率"）
-    Stage3 远跳机制    → 无进展时从已发现点远跳（跳距=间距阈值×ratio，变量绑定）
+"""species_agent.py - black-box species search framework (species-version migration of the user framework)
+Structural mapping from deep-sea-exploration/src/main_algorithm.py:
+    cubiomes_wrapper  -> oracle.SpeciesOracle (black-box query: temperature -> covariates, deep-sea -> presence)
+    database          -> presence + dispersion constraint inside the oracle
+    state_manager     -> covariate binning + region (cov_in_state)
+    Stage1/2/3        -> blind search -> parameter accumulation -> parameter-guided + Q-learning + long jump
+    temperature_guidance -> binned-density guidance (uses queried-grid statistics of "parameter range -> presence rate")
+    Stage3 long jump  -> when stuck, long jump from found points (jump distance = spacing threshold x ratio, variable-bound)
 """
 import math
 import random
@@ -15,9 +15,9 @@ import numpy as np
 
 from oracle import SpeciesOracle
 
-# ---- 动作空间：8 方向 × 4 步长（网格单位）----
+# ---- action space: 8 directions x 4 step sizes (grid units) ----
 DIRS = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
-STEPS = [2, 5, 10, 20]  # 网格步长（~5km/13km/26km/52km）
+STEPS = [2, 5, 10, 20]  # grid steps (~5km/13km/26km/52km)
 N_BINS = 8
 
 
@@ -41,60 +41,60 @@ class SpeciesSearcher:
         self.eps_end = float(config.get("epsilon_end", 0.1))
         self.eps_decay = float(config.get("epsilon_decay", 0.999))
         self.stage1_grid_step = int(config.get("stage1_grid_step", 2))
-        # 改进1：冷启动盲扫铺开。"spread"=象限轮转交错铺开（默认，小预算下空间覆盖
-        # 均匀、不取决于起始列）；"serpentine"=完整复现旧蛇形光栅（供 A/B 回归）。
+        # improvement 1: cold-start blind sweep spread. "spread" = quadrant-rotated interleaved columns (default; under small budgets the spatial coverage
+        # is uniform and independent of the starting column); "serpentine" = exact reproduction of the old serpentine raster (for A/B regression).
         self.stage1_scan_mode = config.get("stage1_scan_mode", "spread")
-        self.n_bins = int(config.get("n_bins", N_BINS))   # 分箱数可配置（消融维度）
-        self._rng = random.Random(0)      # episode rng（run_episode 注入，保证可复现）
+        self.n_bins = int(config.get("n_bins", N_BINS))   # bin count is configurable (ablation dimension)
+        self._rng = random.Random(0)      # episode rng (injected by run_episode; guarantees reproducibility)
         self.n_actions = 8 * len(STEPS)
         self.guidance_on = config.get("guidance_on", True)
         self.cluster_guidance = bool(config.get("cluster_guidance", False))
-        # ---- 优化项：多簇分别追 + 覆盖预算 + 三级远跳 ----
-        # 全部默认开启；传 False / 0 / 0.0 即逐项关闭，关闭后复现旧行为（供 A/B）
+        # ---- optimization items: per-cluster pursuit + coverage budget + three-level long jump ----
+        # all on by default; passing False / 0 / 0.0 disables each item, reproducing old behavior (for A/B)
         self.multicluster = bool(config.get("multicluster", True))
         self.cluster_ring_ratio = float(config.get("cluster_ring_ratio", 10.0))
         self.cluster_idle_limit = int(config.get("cluster_idle_limit", 12))
         self.blank_jump = bool(config.get("blank_jump", True))
         self.coverage_budget_ratio = float(config.get("coverage_budget_ratio", 0.12))
-        # 迭代v2：导向空白跳远距阈值 / 跳后再跳宽限步数 / 饱和簇掩膜开关
+        # iteration v2: guidance-blank jump distance threshold / post-jump grace steps / saturated-cluster mask switch
         self.blank_far_ratio = float(config.get("blank_far_ratio", 0.3))
         self.post_jump_grace = int(config.get("post_jump_grace", 6))
         self.saturate_mask = bool(config.get("saturate_mask", False))
-        # 迭代v2.1：掩膜延迟施加（idle 超过此值才从导向图摘除，给慢热簇留探索时间）
+        # iteration v2.1: delayed mask application (remove from the guidance map only after idle exceeds this value, leaving slow-start clusters exploration time)
         self.mask_idle_limit = int(config.get("mask_idle_limit", 20))
         self.idle_blank_mix = int(config.get("idle_blank_mix", 8))
-        # 改进3：运动外推（默认关闭）。开启后用已发现点时序估计漂移速度矢量，
-        # 把预测位置注入 Stage2/3 候选，适配海上搜救类动目标。关闭时与 variant F 逐点一致。
+        # improvement 3: motion extrapolation (default off). when on, estimates a drift velocity vector from the timestamps of found points,
+        # injecting the predicted position into Stage 2/3 candidates for moving targets such as maritime search-and-rescue. off = bitwise identical to variant F.
         self.motion_extrapolation = bool(config.get("motion_extrapolation", False))
-        # 时间衰减/遗忘机制（四轮）：历史样本随时间淡出，新观测主导导向图。
-        # time_decay=False 时与二轮版逐点等价。
+        # time decay / forgetting mechanism (round 4): historical samples fade out over time; recent observations dominate the guidance map.
+        # time_decay=False is pointwise equivalent to the round-2 version.
         self.time_decay = bool(config.get("time_decay", False))
         self.decay_mode = config.get("decay_mode", "exp")          # "exp" / "window"
-        self.decay_tau = float(config.get("decay_tau", 300.0))     # 指数时间常数（查询数）
-        self.decay_window = int(config.get("decay_window", 400))    # 滑窗大小
-        self.decay_min_weight = float(config.get("decay_min_weight", 0.05))  # AUC 时效过滤阈值
-        self.q_decay_tau = float(config.get("q_decay_tau", 200.0)) # Q 表衰减时间常数
-        self.q_decay_every = int(config.get("q_decay_every", 25))  # Q 表衰减周期（查询数）
-        # 四轮-M1：突变检测+空窗压缩（默认全 False，关闭时与三轮版逐点等价）
+        self.decay_tau = float(config.get("decay_tau", 300.0))     # exponential time constant (in queries)
+        self.decay_window = int(config.get("decay_window", 400))    # sliding-window size
+        self.decay_min_weight = float(config.get("decay_min_weight", 0.05))  # AUC time-filter threshold
+        self.q_decay_tau = float(config.get("q_decay_tau", 200.0)) # Q-table decay time constant
+        self.q_decay_every = int(config.get("q_decay_every", 25))  # Q-table decay period (in queries)
+        # round-4 M1: mutation detection + empty-window compression (all False by default; off = pointwise equivalent to the round-3 version)
         self.mutation_detect = bool(config.get("mutation_detect", False))
         self.mutation_streak_thresh = int(config.get("mutation_streak_thresh", 40))
         self.mutation_accel = float(config.get("mutation_accel", 2.0))
         self.mutation_ramp = int(config.get("mutation_ramp", 40))
         self.mutation_auto_motion = bool(config.get("mutation_auto_motion", False))
-        # 四轮-M2：Stage1 先验聚焦（默认 False）
+        # round-4 M2: Stage-1 prior focusing (default False)
         self.stage1_prior = bool(config.get("stage1_prior", False))
         self.stage1_prior_cov = int(config.get("stage1_prior_cov", 8))
-        # 四轮-M3：高维弱信号加权（默认 False）
+        # round-4 M3: high-dimensional weak-signal weighting (default False)
         self.weak_signal_boost = bool(config.get("weak_signal_boost", False))
         self.weak_signal_min_auc = float(config.get("weak_signal_min_auc", 0.52))
-        # 五轮-M4：跟随模式（默认 False；关闭时与四轮逐位等价）
+        # round-5 M4: follow mode (default False; off is bitwise equivalent to round 4)
         self.follow_mode = bool(config.get("follow_mode", False))
         self.follow_window = int(config.get("follow_window", 24))
         self.follow_radius = float(config.get("follow_radius", 8.0))
-        # 五轮-M6：突变旱期撒网跳（默认 False）
+        # round-5 M6: mutation-drought scatter jump (default False)
         self.mutation_disperse_jump = bool(config.get("mutation_disperse_jump", False))
         self.mutation_jump_interval = int(config.get("mutation_jump_interval", 15))
-        # 每协变量全网格 min/max（用于状态分箱，自适应）
+        # per-covariate full-grid min/max (for state binning; adaptive)
         self._cov_range = []
         for k in range(oracle.covs.shape[0]):
             v = oracle.covs[k]
@@ -107,45 +107,45 @@ class SpeciesSearcher:
         self.stage = 1
         self.q = {}
         self.eps = self.eps_start
-        # 数据积累：已查询网格的 (协变量向量, 是否出现) 样本
+        # data accumulation: (covariate vector, presence) samples of queried cells
         self._queries = []          # [(cov_vec, presence_bool)]
-        self._feature_log = []      # 特征选择诊断：(n_q, n_pos, [(cov_idx, weight)...])
+        self._feature_log = []      # feature-selection diagnostics: (n_q, n_pos, [(cov_idx, weight)...])
         self._densities = None      # {k: (edges, density)}
-        self._weights = {}          # {k: 区分度权重}
-        self._score_map = None      # 全网格导向分
+        self._weights = {}          # {k: discriminative weight}
+        self._score_map = None      # full-grid guidance score
         self._stage3_idle = 0
         self.cur_cell = None
         self.convergence = []
-        # 多簇簿记（优化项1）：[{members, centroid, cover_radius, last_grown_q, saturated}]
+        # multi-cluster bookkeeping (optimization 1): [{members, centroid, cover_radius, last_grown_q, saturated}]
         self._clusters = []
-        self._last_found_cell = None      # 本轮新发现点（簇生长记账用）
-        self.stage1_end_coverage = None   # Stage1 结束时覆盖比例（优化项2 显式记录）
-        # 迭代v2：跳后节奏 / 饱和簇掩膜缓存
+        self._last_found_cell = None      # new found cell this round (for cluster-growth accounting)
+        self.stage1_end_coverage = None   # coverage ratio at the end of Stage 1 (explicitly recorded by optimization 2)
+        # iteration v2: post-jump rhythm / saturated-cluster mask cache
         self._steps_since_jump = 0
         self._has_jumped = False
         self._far_cooldown = False
         self._eff_sm = None
         self._eff_sig = None
-        # 改进1：spread 盲扫游标（交错列序光栅；首次进入 Stage1 时惰性初始化）
+        # improvement 1: spread blind-sweep cursor (interleaved column raster; lazily initialized when Stage 1 starts)
         self._s1_j0 = None
         self._s1_band_w = 0
         self._s1_B = 0
         self._s1_offset = 0
         self._s1_band = 0
         self._s1_row = 0
-        # 改进3：已发现点的时间戳（=发现时 query_count），与 found_cells 平行簿记
+        # improvement 3: timestamps of found points (= query_count at discovery), kept in parallel with found_cells
         self._found_t = []
-        # 四轮：与 _queries 平行的时间戳（记录时样本数），仅 time_decay 分支读取
+        # round 4: timestamps parallel to _queries (sample count at record time); only read by the time_decay branch
         self._query_t = []
-        # 四轮-M1：突变检测簿记（最后一次命中时的 query_count）
+        # round-4 M1: mutation-detection bookkeeping (query_count of the last hit)
         self._last_hit_q = -1
-        # 五轮-M4：跟随模式簿记（最后一次命中时的 query_count，无 mutation_detect 门控）
+        # round-5 M4: follow-mode bookkeeping (query_count of the last hit, without mutation_detect gating)
         self._last_hit_q_any = -1
-        # 四轮-M2：Stage1 先验聚焦簿记（惰性构建）
+        # round-4 M2: Stage-1 prior-focus bookkeeping (lazily built)
         self._s1_prior_order = None
         self._s1_prior_pos = 0
 
-    # ---- 分散约束 ----
+    # ---- dispersion constraint ----
     def _distance_ok(self, i, j):
         if not self.found_cells:
             return True
@@ -154,13 +154,13 @@ class SpeciesSearcher:
                 return False
         return True
 
-    # ---- 分箱密度导向（用全部已查询正负样本；按变量区分度加权）----
-    # ---- 区分度精筛：Mann-Whitney AUC（噪声变量≈0.5，对小样本波动免疫）----
+    # ---- binned-density guidance (uses all queried positive/negative samples; weighted by variable discriminativeness) ----
+    # ---- discriminative screening: Mann-Whitney AUC (noise variables ~0.5, immune to small-sample fluctuation) ----
     def _auc(self, pos_vals, neg_vals):
         n, m = len(pos_vals), len(neg_vals)
         if n == 0 or m == 0:
             return 0.5
-        # 抽样控制计算量（用 episode rng，保证可复现）
+        # sampling controls the compute cost (uses the episode rng; reproducible)
         if n > 200:
             pos_vals = self._rng.sample(list(pos_vals), 200)
             n = 200
@@ -173,7 +173,7 @@ class SpeciesSearcher:
         ranks[order] = np.arange(1, len(x) + 1)
         xs = x[order]
         i, L = 0, len(xs)
-        while i < L:                       # ties 平均秩
+        while i < L:                       # average rank for ties
             j = i
             while j + 1 < L and xs[j + 1] == xs[i]:
                 j += 1
@@ -183,18 +183,18 @@ class SpeciesSearcher:
         rsum = float(ranks[:n].sum())
         u = rsum - n * (n + 1) / 2.0
         auc = u / (n * m)
-        return max(auc, 1.0 - auc)        # 方向无关，只取分离度
+        return max(auc, 1.0 - auc)        # direction-agnostic; keep only the separability
 
-    # ---- 四轮：时间衰减/遗忘机制 ----
+    # ---- round 4: time decay / forgetting mechanism ----
     def _decay_weights(self, accel=True):
-        """返回长度 n 的 float 权重向量（样本 t 的年龄 = n-1 - _query_t[t]）。
-        time_decay=False 返回全 1；window 模式超窗权重 0；exp 模式指数衰减。
-        accel=False 时跳过 M1 突变加速（供 AUC 选参/n_pos 门限解耦用）。"""
+        """Return a float weight vector of length n (age of sample t = n-1 - _query_t[t]).
+        time_decay=False returns all-ones; window mode zeroes weights beyond the window; exp mode decays exponentially.
+        accel=False skips the M1 mutation acceleration (used to decouple the AUC parameter / n_pos gate)."""
         n = len(self._queries)
         if not self.time_decay or n == 0:
             return np.ones(n, dtype=np.float64)
         ages = (n - 1) - np.asarray(self._query_t, dtype=np.float64)
-        # 四轮-M1：突变旱期旧样本有效年龄放大（最多 ×(1+mutation_accel)），加速淡出
+        # round-4 M1: enlarge the effective age of old samples in a mutation drought (at most x(1+mutation_accel)) to fade them out faster
         if self.mutation_detect and accel:
             streak = self._mutation_streak()
             if streak > self.mutation_streak_thresh:
@@ -211,9 +211,9 @@ class SpeciesSearcher:
                 return np.ones(n, dtype=np.float64)
             return np.exp(-ages / tau)
 
-    # ---- 四轮-M1：突变检测 helper ----
+    # ---- round-4 M1: mutation detection helpers ----
     def _mutation_streak(self):
-        """当前"全局零命中"查询数（样本索引域：n-1 - last_hit_q）。"""
+        """Current "global zero-hit" query count (in the sample-index domain: n-1 - last_hit_q)."""
         if not self.mutation_detect:
             return 0
         n = len(self._queries)
@@ -221,17 +221,17 @@ class SpeciesSearcher:
             return n - 1 if n > 0 else 0
         return max((n - 1) - self._last_hit_q, 0)
 
-    # ---- 五轮-M4：跟随模式 helpers ----
+    # ---- round-5 M4: follow-mode helpers ----
     def _follow_active(self):
-        """跟随模式激活：follow_mode=True 且最近一次命中在 follow_window 查询内。
-        OFF 时短路返回 False（不读任何新簿记，逐位等价）。"""
+        """Follow mode active: follow_mode=True and the last hit is within follow_window queries.
+        Short-circuits to False when OFF (reads no new bookkeeping; bitwise equivalent)."""
         if not self.follow_mode or self._last_hit_q_any < 0:
             return False
         return (self.oracle.query_count - self._last_hit_q_any) < self.follow_window
 
     def _follow_ring(self, k):
-        """锚定最近发现点的 [min_dist, follow_radius] 环带内未访问格（随机序）。
-        环空返回 []（调用方立即回退原路径）。仅 follow_mode ON 时被调用。"""
+        """Anchor the ring band [min_dist, follow_radius] around the latest found point, unvisited cells in random order.
+        Empty ring returns [] (the caller immediately falls back to the original path). Only called when follow_mode is ON."""
         if self._last_found_cell is None:
             return []
         o = self.oracle
@@ -252,10 +252,10 @@ class SpeciesSearcher:
         self._rng.shuffle(cand)
         return cand[:k]
 
-    # ---- 五轮-M6：突变旱期撒网跳 ----
+    # ---- round-5 M6: mutation-drought scatter jump ----
     def _mutation_disperse_jump(self):
-        """突变窗口内：距所有已发现点 >= far_dist 的未访问粗网格格均匀随机取一个。
-        刻意不用导向分（突变后导向图仍指旧区，导向跳会被拉回旧区）。"""
+        """Inside a mutation window: uniformly pick one unvisited coarse-grid cell at distance >= far_dist from all found points.
+        Deliberately ignores the guidance score (after a mutation the guidance map still points to the old region, so a guided jump would be pulled back)."""
         o = self.oracle
         step = max(8, min(o.nrows, o.ncols) // 8)
         far_dist = self.blank_far_ratio * min(o.nrows, o.ncols)
@@ -275,8 +275,8 @@ class SpeciesSearcher:
         return True
 
     def _auc_decayed(self, pos_vals, neg_vals, w_pos, w_neg):
-        """按 权重 >= decay_min_weight 过滤后调用原 _auc。
-        任一侧过滤后为空返回 0.5。"""
+        """Call the original _auc after filtering by weight >= decay_min_weight.
+        Returns 0.5 if either side is empty after filtering."""
         keep_p = w_pos >= self.decay_min_weight
         keep_n = w_neg >= self.decay_min_weight
         pv = pos_vals[keep_p]
@@ -286,8 +286,8 @@ class SpeciesSearcher:
         return self._auc(pv, nv)
 
     def _decay_q(self):
-        """把所有 q[s][a] 乘以指数衰减因子。纯算术，不消耗 self._rng。
-        q_decay_tau>=1e7 视为无穷（无衰减效果，直接返回以保证数值等价）。"""
+        """Multiply all q[s][a] by an exponential decay factor. Pure arithmetic; consumes no self._rng.
+        q_decay_tau>=1e7 is treated as infinity (no decay; returns directly for numerical equivalence)."""
         if self.q_decay_tau <= 0 or self.q_decay_tau >= 1e7:
             return
         factor = math.exp(-self.q_decay_every / max(self.q_decay_tau, 1e-9))
@@ -296,20 +296,20 @@ class SpeciesSearcher:
                 self.q[s][a] *= factor
 
     def _build_density(self):
-        """对每个协变量分 N_BINS 箱，density = 箱内出现查询数/箱内查询数；
-        同时计算各变量分离度权重，区分度高的变量权重大。
-        v2 稀疏化（sparse_guidance=True）：
-          正样本足够后，先按箱密度方差粗筛 top-12，再以 AUC 精筛，
-          只保留统计上区分度显著的变量（AUC>0.55），权重按 (AUC-0.5)^2 幂律压缩。
-          topK 随正样本数渐进放宽：样本越多，估计越可靠，可保留越多有效变量。
-          噪声变量 AUC≈0.5 被天然排除 → 参数多 = 候选池大，在线选择器自动挑出有效子集。"""
+        """Bin each covariate into N_BINS bins; density = presence queries in bin / queries in bin;
+        also computes a separability weight per variable; highly discriminative variables get larger weights.
+        v2 sparsification (sparse_guidance=True):
+          once enough positives exist, first coarse-filter top-12 by bin-density variance, then fine-filter by AUC,
+          keeping only statistically significant variables (AUC>0.55), with weights compressed by the power law (AUC-0.5)^2.
+          topK relaxes progressively with more positives: more samples -> more reliable estimates -> more retained variables.
+          noise variables with AUC~0.5 are naturally excluded -> more parameters only enlarge the candidate pool, and the online selector picks the useful subset."""
         if len(self._queries) < self.stage2_min:
             return
         covs = np.array([q[0] for q in self._queries])       # (n, K)
         pres = np.array([q[1] for q in self._queries], dtype=float)
-        # 四轮：时间衰减权重向量（time_decay=False 时全 1）
-        w = self._decay_weights()                  # 密度导向：突变期加速
-        w_sel = self._decay_weights(accel=False)   # 四轮-M1解耦：AUC选参/n_pos门限用不加速权重
+        # round 4: time-decay weight vector (all-ones when time_decay=False)
+        w = self._decay_weights()                  # density guidance: accelerated in mutation periods
+        w_sel = self._decay_weights(accel=False)   # round-4 M1 decoupled: non-accelerated weights for the AUC parameter / n_pos gate
         self._densities = {}
         raw_w = {}
         for k in self.cov_indices:
@@ -328,30 +328,30 @@ class SpeciesSearcher:
                 pos = np.bincount(b, weights=pres, minlength=self.n_bins)
             nz = cnt > 0
             dens[nz] = pos[nz] / cnt[nz]
-            # 平滑：无查询箱用全局出现率
+            # smoothing: bins without queries use the global presence rate
             dens[~nz] = pos.sum() / max(cnt.sum(), 1)
             self._densities[k] = (edges, dens)
-            raw_w[k] = float(np.var(dens))   # 粗筛：箱密度方差
+            raw_w[k] = float(np.var(dens))   # coarse filter: bin-density variance
 
-        # ---- v2 稀疏化：AUC 精筛 + 幂律压缩 + topK 渐进 ----
+        # ---- v2 sparsification: AUC fine-filter + power-law compression + progressive topK ----
         if self.cfg.get("sparse_guidance", False):
             if self.time_decay:
                 n_pos = int(round(float(np.sum(pres * w_sel))))
             else:
                 n_pos = int(pres.sum())
             n_q = len(self._queries)
-            # v3 冷启动（默认关闭，保持 v2 可复现）：总样本积累不足时全量加权
-            # （AUC 在小样本下噪声大），过阈值后才启用稀疏；仅在实验脚本显式
-            # 传入 cold_start_samples>0 时生效
+            # v3 cold start (default off; keeps v2 reproducible): when total samples are insufficient, use full weighting
+            # (AUC is noisy under small samples), enabling sparsification only above the threshold; takes effect only when the experiment script explicitly
+            # passes cold_start_samples>0
             cold_start = int(self.cfg.get("cold_start_samples", 0))
             if n_pos >= self.cfg.get("sparse_min_pos", 5) and n_q >= cold_start:
                 topk_base = int(self.cfg.get("sparse_topk", 6))
                 n_vars = len(raw_w)
-                # 正样本越多，区分度估计越可靠 → 可保留更多有效变量
+                # more positives -> more reliable discriminative estimates -> more valid variables can be kept
                 topk = min(topk_base + max(0, (n_pos - 5) // 15), n_vars)
-                # 1) 方差粗筛 top-12（快），避免对 19 变量全量算 AUC
+                # 1) variance coarse-filter top-12 (fast), avoiding full AUC over 19 variables
                 ranked_v = sorted(raw_w.items(), key=lambda x: -x[1])[:12]
-                # 2) AUC 精筛：噪声变量≈0.5，真信号稳定>0.55
+                # 2) AUC fine-filter: noise variables ~0.5; true signals stably >0.55
                 pos_idx = np.where(pres > 0.5)[0]
                 neg_idx = np.where(pres < 0.5)[0]
                 auc_w = {}
@@ -363,7 +363,7 @@ class SpeciesSearcher:
                     else:
                         auc_w[k] = self._auc(covs[pos_idx, k], covs[neg_idx, k])
                 ranked_a = sorted(auc_w.items(), key=lambda x: -x[1])[:topk]
-                # 3) 只保留显著变量，权重 = (AUC-0.5)^2 * 4（软稀疏：弱信号近清零）
+                # 3) keep only significant variables; weight = (AUC-0.5)^2 * 4 (soft sparsification: weak signals near zero)
                 if self.weak_signal_boost:
                     keep = {}
                     for k, w in ranked_a:
@@ -375,8 +375,8 @@ class SpeciesSearcher:
                     keep = {k: max(w - 0.5, 0.0) ** 2 * 4.0 for k, w in ranked_a if w > 0.55}
                 if keep:
                     raw_w = keep
-                # 保守回退：显著变量为空（样本极端）则保留 top1，避免导向全失
-                # 特征选择诊断：记录本轮选中的代表特征及其权重（按权重降序）
+                # conservative fallback: if no significant variable (extreme samples), keep top1 so guidance never fully dies
+                # feature-selection diagnostics: record this round's representative features and weights (descending by weight)
                 self._feature_log.append(
                     (len(self._queries), n_pos,
                      sorted(keep.items(), key=lambda x: -x[1])))
@@ -386,7 +386,7 @@ class SpeciesSearcher:
                          for k, w in raw_w.items()}
 
     def _cell_score(self, i, j):
-        """网格导向分：协变量所在箱的出现密度，按变量区分度加权"""
+        """Grid guidance score: presence density of the covariate bin, weighted by variable discriminativeness"""
         if self._densities is None:
             return 0.0
         c = self.oracle.covs[:, i, j]
@@ -412,21 +412,21 @@ class SpeciesSearcher:
 
     def _record_query(self, i, j, pres):
         self._queries.append((self.oracle.covs[:, i, j].copy(), bool(pres)))
-        self._query_t.append(len(self._queries) - 1)  # 时间戳 = 样本索引（与最新样本的距离即 age）
-        # 密度表/导向图每 recalc_every 次查询重建一次（避免 O(K×N) 全量重算拖慢 19 参数）
+        self._query_t.append(len(self._queries) - 1)  # timestamp = sample index (distance from the newest sample is the age)
+        # density table / guidance map rebuilt every recalc_every queries (avoid O(KxN) full recomputation slowing 19 parameters)
         n_q = len(self._queries)
         if self.stage >= 2 and (n_q % self.cfg.get("recalc_every", 20) == 0
                                 or n_q == self.stage2_min):
             self._build_density()
             self._build_score_map()
-        # 四轮：Q 表周期性衰减（密度重建块之后）
+        # round 4: periodic Q-table decay (placed after the density-rebuild block)
         if (self.time_decay and self.q_decay_tau > 0
                 and n_q % self.q_decay_every == 0):
             self._decay_q()
 
-    # ---- 聚类感知导向（多模态：候选按集群分散，避免全局导向锁死单簇）----
+    # ---- cluster-aware guidance (multimodal: candidates spread over clusters to avoid the global guidance locking onto one cluster) ----
     def _cluster_found_cells(self):
-        """分箱网格连通聚类（8 邻域 BFS）：把已发现点分成空间集群"""
+        """Bin-grid connected clustering (8-neighborhood BFS): partition found points into spatial clusters"""
         o = self.oracle
         n = len(self.found_cells)
         if n < 3:
@@ -465,7 +465,7 @@ class SpeciesSearcher:
         return clusters
 
     def _cluster_ring_candidates(self, cluster, min_d, max_d):
-        """簇热区：以簇成员为中心、[min_d, max_d] 环带内未访问网格，按全局导向分降序去重"""
+        """Cluster hot zone: unvisited cells in the [min_d, max_d] ring band around cluster members, deduplicated in descending global guidance score"""
         o = self.oracle
         sm = self._score_map if self._score_map is not None else None
         cand = []
@@ -489,12 +489,12 @@ class SpeciesSearcher:
             uniq.append((ni, nj))
         return uniq
 
-    # ---- 优化项1：多簇簿记（簇划分复用 _cluster_found_cells 分箱 8 邻域 BFS）----
+    # ---- optimization 1: multi-cluster bookkeeping (reuses _cluster_found_cells bin-grid 8-neighborhood BFS) ----
     def _sync_clusters(self):
-        """依据 found_cells 重建簇划分，并沿用上一轮簇的生长时间/饱和状态。
-        每簇 dict: {members, centroid, cover_radius, last_grown_q, saturated}。
-        新点归入：由分箱 BFS 自然落簇；本轮新发现点所在簇 last_grown_q 刷新、
-        饱和解除；连续无新点查询数 > cluster_idle_limit → 标记饱和。"""
+        """Rebuild the cluster partition from found_cells, carrying over each cluster's growth time and saturation state.
+        Each cluster dict: {members, centroid, cover_radius, last_grown_q, saturated}.
+        New points fall into clusters naturally via bin-grid BFS; the cluster containing this round's new point refreshes last_grown_q and
+        unsaturates; consecutive queries without a new point beyond cluster_idle_limit mark it saturated."""
         if not self.found_cells:
             self._clusters = []
             return
@@ -525,9 +525,9 @@ class SpeciesSearcher:
         self._clusters = out
 
     def _ring_around_centroid(self, centroid, min_d, max_d):
-        """以簇质心为中心、[min_d, max_d] 环带内未访问网格，按全局导向分降序去重。
-        半径上界 = cluster_ring_ratio × min_dist（替换旧 max(5, min_dist×jump_max_ratio)
-        的近视力）；单中心扫描替代逐成员循环，省算力。"""
+        """Unvisited cells in the [min_d, max_d] ring band around the cluster centroid, deduplicated in descending global guidance score.
+        Upper radius = cluster_ring_ratio x min_dist (replacing the old near-sighted max(5, min_dist x jump_max_ratio));
+        single-center scanning replaces the per-member loop, saving compute."""
         o = self.oracle
         sm = self._score_map
         cx, cy = int(round(centroid[0])), int(round(centroid[1]))
@@ -547,9 +547,9 @@ class SpeciesSearcher:
         return [(i, j) for _, i, j in cand]
 
     def _effective_score_map(self):
-        """迭代v2-B：长时间无新点（idle > mask_idle_limit）的簇 cover 区域从导向分中
-        临时置零，防 Q/导向把搜索拉回已采尽簇；给慢热簇留 mask_idle_limit 步探索期。
-        无待掩膜簇 / 全部簇待掩膜 / multicluster=False → 原样返回 score_map。"""
+        """Iteration v2-B: temporarily zero the guidance score of the cover regions of clusters idle too long (idle > mask_idle_limit),
+        preventing Q/guidance from pulling the search back into exhausted clusters; gives slow-start clusters a mask_idle_limit-step exploration window.
+        Returns score_map unchanged when there is no cluster to mask / all clusters to mask / multicluster=False."""
         if not self.multicluster or not self.saturate_mask or self._score_map is None:
             return self._score_map
         self._sync_clusters()
@@ -577,10 +577,10 @@ class SpeciesSearcher:
         return sm
 
     def _blank_candidates(self, n=1):
-        """迭代v2-A：导向空白跳候选。粗网格步长 max(8, min(nrows,ncols)//8)，
-        先过滤'距最近已发现点 ≥ far_dist（=blank_far_ratio×min(nrows,ncols)）'的
-        远距未访问格，再按全局导向分降序取 top-8 随机 n 个——跳向
-        '远且像目标栖息地'的区域，而非纯随机死区。导向图未建时回退最远采样。"""
+        """Iteration v2-A: guidance-blank jump candidates. Coarse-grid step max(8, min(nrows,ncols)//8);
+        first filter for distant unvisited cells 'at distance >= far_dist (=blank_far_ratio x min(nrows,ncols)) from the nearest found point',
+        then take the top-8 by global guidance score and pick n at random - jumping toward
+        'far regions that look like target habitat' rather than random dead zones. Falls back to farthest sampling when the guidance map is absent."""
         o = self.oracle
         step = max(8, min(o.nrows, o.ncols) // 8)
         far_dist = self.blank_far_ratio * min(o.nrows, o.ncols)
@@ -602,19 +602,19 @@ class SpeciesSearcher:
         if not pool:
             return []
         if sm is not None and far:
-            # 远距候选按导向分降序
+            # distant candidates in descending guidance score
             pool.sort(key=lambda x: -x[0])
             top = pool[:8]
         else:
-            # 无导向图或无远距候选：回退最远采样
+            # no guidance map or no distant candidates: fall back to farthest sampling
             pool.sort(key=lambda x: -x[0])
             top = pool[:8]
         self._rng.shuffle(top)
         return [(i, j) for _, i, j in top[:n]]
 
     def _blank_jump(self):
-        """三级远跳 L3：空白区开簇跳。跳距由域尺寸/簇间距决定，不受
-        [jump_min_ratio, jump_max_ratio] 比例限制。"""
+        """Three-level long jump L3: open-cluster jump in blank regions. Jump distance is set by domain size / cluster spacing and is not
+        bounded by the [jump_min_ratio, jump_max_ratio] ratio."""
         picks = self._blank_candidates(1)
         if not picks:
             return False
@@ -622,7 +622,7 @@ class SpeciesSearcher:
         return True
 
     def _cross_cluster_jump(self):
-        """三级远跳 L2：跨簇转移跳——跳到另一未饱和簇质心外环的随机候选。"""
+        """Three-level long jump L2: cross-cluster transfer jump - jump to a random candidate on the outer ring of another unsaturated cluster."""
         self._sync_clusters()
         unsat = [cl for cl in self._clusters if not cl["saturated"]]
         if len(unsat) < 2:
@@ -637,19 +637,19 @@ class SpeciesSearcher:
         return True
 
     def _coverage_ok(self):
-        """优化项2：Stage1 盲扫预算下限。coverage_budget_ratio<=0 关闭（复旧行为）"""
+        """Optimization 2: Stage-1 blind-sweep budget floor. coverage_budget_ratio<=0 disables it (reproduces old behavior)"""
         r = self.coverage_budget_ratio
         if r <= 0:
             return True
         return self.oracle.query_count >= int(self.max_queries * r)
 
-    # ---- 改进1：冷启动盲扫铺开（spread，交错列序光栅）----
+    # ---- improvement 1: cold-start blind-sweep spread (interleaved-column raster) ----
     def _stage1_spread_next(self, i, j, o):
-        """以随机起始列 j 为锚，按"交错列序"访问列：先取 j0, j0+band_w, ...,
-        j0+(B-1)*band_w（B 个均匀散布列），再逐偏移补齐 j0+1, j0+1+band_w, ...。
-        每列内部按 stage1_grid_step 向下扫行；一列扫完才推进到下一交错列。
-        小预算下首批查询即散布全列轴（不取决于起始列），又不会像固定锚定列那样
-        原地重扫卡死。纯算术推进，不消耗 episode rng。"""
+        """Anchor at a random starting column j and visit columns in "interleaved order": first j0, j0+band_w, ...,
+        j0+(B-1)*band_w (B uniformly spread columns), then fill in the offsets j0+1, j0+1+band_w, ... .
+        Within each column, rows are swept downward at stage1_grid_step; only after one column finishes does the sweep move to the next interleaved column.
+        Under small budgets the first batch of queries already spreads across the column axis (independent of the starting column), without the stall
+        of a fixed-anchor column re-scanning in place. Pure arithmetic; consumes no episode rng."""
         st = self.stage1_grid_step
         if self._s1_j0 is None:
             B = int(self.cfg.get("stage1_spread_bands", max(4, o.ncols // 10)))
@@ -673,10 +673,10 @@ class SpeciesSearcher:
         c = (self._s1_j0 + self._s1_band * self._s1_band_w + self._s1_offset) % o.ncols
         return (self._s1_row, c)
 
-    # ---- 四轮-M2：Stage1 先验聚焦 ----
+    # ---- round-4 M2: Stage-1 prior focusing ----
     def _stage1_prior_next(self, o):
-        """按 covs[stage1_prior_cov] 降序返回下一个未访问格；全部访问完返回 None。
-        确定性（不消耗 RNG）；首次调用时构建一次排序。"""
+        """Return the next unvisited cell in descending covs[stage1_prior_cov]; returns None when all are visited.
+        Deterministic (no RNG); builds the sorted order once on first call."""
         if self._s1_prior_order is None:
             c = self.oracle.covs[self.stage1_prior_cov]
             flat = np.argsort(-c.ravel(), kind="mergesort")
@@ -689,11 +689,11 @@ class SpeciesSearcher:
                 return cell
         return None
 
-    # ---- 改进3：运动外推 ----
+    # ---- improvement 3: motion extrapolation ----
     def _motion_predicted_cell(self):
-        """用已发现点时序估计漂移速度矢量（相邻发现位移/时间增量取中位数），
-        外推目标当前位置。静态 oracle 下位移≈0 → 预测≈最后发现点（已 visited，
-        不会重复注入），模块自然无效。返回 (pi,pj) 或 None。"""
+        """Estimate the drift velocity vector from the timestamps of found points (median of adjacent displacement/time deltas),
+        extrapolating the target's current position. Under a static oracle the displacement ~0 -> the prediction ~ the last found point (already visited,
+        so it will not be re-injected), making the module naturally inert. Returns (pi,pj) or None."""
         if not (self.motion_extrapolation
                 or (self.mutation_detect and self.mutation_auto_motion
                     and self._mutation_streak() > self.mutation_streak_thresh)):
@@ -720,21 +720,21 @@ class SpeciesSearcher:
             return (pi, pj)
         return None
 
-    # ---- 自适应开关（A11）：在线诊断已发现点的空间结构 ----
-    # 多集群(≥2 簇) → 聚类分散导向（防全局导向锁死单侧高分簇）；
-    # 单集群(1 簇) → 全局导向（协变量单调驱动，导向有效）。
-    # adaptive=True 时无需人工指定 cluster_guidance，机器自动切换。
+    # ---- adaptive switch (A11): online diagnosis of the spatial structure of found points ----
+    # multi-cluster (>=2 clusters) -> cluster-spread guidance (prevents the global guidance from locking onto one high-score side);
+    # single cluster (1 cluster) -> global guidance (covariates drive monotonically; guidance is effective).
+    # with adaptive=True no manual cluster_guidance is needed; the machine switches automatically.
     def _use_cluster_mode(self):
         if not self.cfg.get("adaptive", False):
             return self.cluster_guidance
         clusters = self._cluster_found_cells()
         return len(clusters) >= 2
 
-    # ---- 候选网格 ----
+    # ---- candidate grid ----
     def _top_unvisited(self, k: int):
         o = self.oracle
         sm = self._effective_score_map() if self._score_map is not None else np.zeros((o.nrows, o.ncols))
-        # ---- 优化项1：多簇分别追（multicluster=True 时优先；关闭则完全走旧逻辑）----
+        # ---- optimization 1: per-cluster pursuit (multicluster=True takes priority; otherwise the old logic runs entirely) ----
         if self.multicluster and self.found_cells:
             self._sync_clusters()
             if len(self._clusters) >= 2:
@@ -758,10 +758,10 @@ class SpeciesSearcher:
                             break
                     if out:
                         return out
-                # 兜底：全部簇饱和 → 落到下方旧全局导向
+                # fallback: all clusters saturated -> drop to the old global guidance below
             else:
-                # v2f 单簇：走旧全局导向 top-K（CHL 类单一密集热点簇）；
-                # 仅当该簇停滞 idle>=idle_blank_mix 时追加空白候选撒网开新簇
+                # v2f single cluster: old global guidance top-K (CHL-type single dense hot-spot cluster);
+                # only when that cluster stalls with idle>=idle_blank_mix do we add blank candidates to scatter and open a new cluster
                 flat = np.argsort(sm.ravel())[::-1]
                 out = []
                 for idx in flat:
@@ -820,23 +820,23 @@ class SpeciesSearcher:
                 return i, j
         return self._rng.randrange(o.nrows), self._rng.randrange(o.ncols)
 
-    # ---- Stage3 远跳（变量绑定跳距：阈值×ratio；定向到未覆盖高分带，提升跨集群覆盖）----
-    # v3 定向远跳：从全局导向分前 20% 的未访问网格中，找"距最近已发现点恰好在跳距范围"
-    # 的高分目标带（跨集群直达）；高分带不足时回退 8 方向定向扫描 + 评分排序。
-    # 保留随机性（top-N 中随机），避免锁定单个高分簇。
+    # ---- Stage3 long jump (variable-bound jump distance: threshold x ratio; directed to uncovered high-score bands to improve cross-cluster coverage) ----
+    # v3 directed long jump: among the top-20% unvisited cells by global guidance score, find "cells whose distance to the nearest found point
+    # falls in the jump range" as high-score target bands (cross-cluster direct reach); when they are insufficient, fall back to an 8-direction
+    # directed scan + score ranking. Randomness is kept (random within top-N) to avoid locking onto one high-score cluster.
     def _far_jump(self):
         if not self.found_cells:
             return False
-        # 五轮-M6：突变窗口内撒网跳优先（分散找新区，绕开旧导向偏置）
+        # round-5 M6: scatter jump first in a mutation window (disperse to new regions, bypassing the old guidance bias)
         if (self.mutation_detect and self.mutation_disperse_jump
                 and self._mutation_streak() > self.mutation_streak_thresh):
             if self._mutation_disperse_jump():
                 return True
-        # ---- 优化项3：三级远跳（L2 跨簇转移 / L3 空白开簇优先；失败回退普通远跳）----
+        # ---- optimization 3: three-level long jump (L2 cross-cluster transfer / L3 blank-cluster opening first; falls back to the normal long jump) ----
         if self.multicluster:
             self._sync_clusters()
             has_sat = any(cl["saturated"] for cl in self._clusters)
-            # 迭代v2-C：跳后 post_jump_grace 步无发现 = 落入死区，同样触发换区
+            # iteration v2-C: no discovery within post_jump_grace steps after landing = landed in a dead zone; trigger another region switch
             dead_zone = self._steps_since_jump >= self.post_jump_grace
             if self.blank_jump and (has_sat or dead_zone):
                 if self._blank_jump():
@@ -851,7 +851,7 @@ class SpeciesSearcher:
         if self.cfg.get("directed_jump", False) and self._score_map is not None:
             sm = self._effective_score_map()
             if self._use_cluster_mode():
-                # 聚类感知远跳：每簇热区均匀取候选（跨簇直达，避免锁单侧高分簇）
+                # cluster-aware long jump: uniform candidates per cluster hot zone (cross-cluster direct reach; avoids locking one high-score side)
                 clusters = self._cluster_found_cells()
                 for cl in clusters:
                     ring = self._cluster_ring_candidates(cl, min_d, max_d)
@@ -863,7 +863,7 @@ class SpeciesSearcher:
                         break
             else:
                 thr = float(np.percentile(sm, 80))
-                # 全局高分未访问网格（候选目标带）
+                # global high-score unvisited cells (candidate target bands)
                 hi = np.argwhere(sm.ravel() >= thr)
                 hi_list = list(hi)
                 self._rng.shuffle(hi_list)
@@ -877,7 +877,7 @@ class SpeciesSearcher:
                         if len(cands) >= 24:
                             break
         if not cands:
-            # 回退：从已发现点向 8 方向做"方向内最优距离"定向扫描
+            # fallback: 8-direction "best-distance-within-direction" directed scan from found points
             for fi, fj in self._rng.sample(self.found_cells, min(4, len(self.found_cells))):
                 for di, dj in DIRS:
                     best = None
@@ -891,7 +891,7 @@ class SpeciesSearcher:
                         cands.append(best)
         if not cands:
             return False
-        # 导向分高的候选优先（带随机性，避免锁定）
+        # high-guidance candidates first (with randomness to avoid locking)
         cands.sort(reverse=True)
         top = cands[: min(6, len(cands))]
         _, ni, nj = self._rng.choice(top)
@@ -952,12 +952,12 @@ class SpeciesSearcher:
         nq_max = max(nq.values()) if nq else 0.0
         self.q.setdefault(s, {})[a] = old + self.lr * (r + self.gamma * nq_max - old)
 
-    # ---- 主循环 ----
+    # ---- main loop ----
     def run_episode(self, algo_seed: int = 42) -> dict:
-        # 改进2：episode 级 RNG 隔离。所有随机性一律走 self._rng 实例，
-        # 不再猴子补丁模块级 random（线程池下多线程共享模块函数会互相覆盖，
-        # 导致同 seed 数字漂移）。self._rng 仍是 random.Random，调用顺序不变，
-        # 故单线程结果与修复前逐点一致。
+        # improvement 2: episode-level RNG isolation. All randomness goes through the self._rng instance,
+        # no longer monkey-patching the module-level random (under a thread pool, sharing module functions across threads overwrites each other,
+        # causing same-seed number drift). self._rng is still a random.Random with unchanged call order,
+        # so single-threaded results are pointwise identical to the pre-fix version.
         self._rng = random.Random(algo_seed)
         return self._run()
 
@@ -994,14 +994,14 @@ class SpeciesSearcher:
                 break
             if self.stage == 1 and n >= self.stage2_min and self._coverage_ok():
                 self.stage = 2
-                # 优化项2：显式记录 Stage1 盲扫结束时的覆盖比例
+                # optimization 2: explicitly record the coverage ratio when the Stage-1 blind sweep ends
                 self.stage1_end_coverage = len(self.visited_cells) / max(o.nrows * o.ncols, 1)
             elif self.stage == 2 and n >= self.stage3_min:
                 self.stage = 3
             if o.query_count >= self.max_queries:
                 break
 
-            # ---- 移动决策 ----
+            # ---- movement decision ----
             if self.stage == 1:
                 if self.stage1_prior:
                     nxt = self._stage1_prior_next(o)
@@ -1014,18 +1014,18 @@ class SpeciesSearcher:
                             nxt = (nxt[0] % o.nrows, 0)
                         self.cur_cell = nxt
                     else:
-                        # 改进1：spread 交错铺开（象限轮转）
+                        # improvement 1: spread interleaved opening (quadrant rotation)
                         self.cur_cell = self._stage1_spread_next(i, j, o)
             elif self.stage == 2:
-                # 导向扫描：top-K 候选中随机（保留探索多样性，避免锁定单集群）
+                # guided scan: random among top-K candidates (keeps exploration diversity; avoids locking onto one cluster)
                 k = self.cfg.get("stage2_topk", 8)
                 cand = self._top_unvisited(k)
-                # 五轮-M4：跟随模式激活时局部环候选优先（环空回退原 top-K）
+                # round-5 M4: when follow mode is active, local-ring candidates take priority (empty ring falls back to the original top-K)
                 if self._follow_active():
                     fr = self._follow_ring(k)
                     if fr:
                         cand = fr
-                # 改进3：运动外推——把漂移预测点注入候选首位（helper 内部已含全部门控）
+                # improvement 3: motion extrapolation - inject the drift-predicted point at the head of the candidates (all gating inside the helper)
                 pc = self._motion_predicted_cell()
                 if pc is not None and pc not in self.visited_cells and pc not in cand:
                     cand = [pc] + list(cand)
@@ -1034,15 +1034,15 @@ class SpeciesSearcher:
                 else:
                     self.cur_cell = self._random_unvisited()
             else:
-                # Stage3：远跳 / Q-learning 移动（导向叠加）
+                # Stage3: long jump / Q-learning movement (guidance stacked)
                 self._stage3_idle += 1
                 self._steps_since_jump += 1
                 jumped = False
-                # 迭代v2-C：跳落地后 post_jump_grace 步无发现即允许再次换区，
-                # 避免在死区空跑一个 30 步间隔；远跳失败一次后退回正常间隔
+                # iteration v2-C: allow another region switch when no discovery within post_jump_grace steps after landing,
+                # avoiding dead-zone idle for a full 30-step interval; a failed long jump falls back to the normal interval once
                 early_rejump = (self.post_jump_grace > 0 and self._has_jumped and not self._far_cooldown
                                 and self._steps_since_jump >= self.post_jump_grace)
-                # 五轮-M6：突变窗口内远跳间隔缩短（mutation_jump_interval）；OFF 时恒等于原值
+                # round-5 M6: long-jump interval shrinks inside a mutation window (mutation_jump_interval); OFF keeps the original value always
                 mut_active = (self.mutation_detect and self.mutation_disperse_jump
                               and self._mutation_streak() > self.mutation_streak_thresh)
                 jump_interval = self.mutation_jump_interval if mut_active else self.stage3_jump_interval
@@ -1057,15 +1057,15 @@ class SpeciesSearcher:
                     else:
                         self._far_cooldown = True
                 if not jumped:
-                    # 五轮-M4：跟随模式局部环直飞（环空立即回退原路径）
+                    # round-5 M4: follow-mode local-ring direct flight (empty ring immediately falls back to the original path)
                     if self._follow_active():
                         fr = self._follow_ring(1)
                         if fr:
                             self.cur_cell = fr[0]
                             jumped = True
                 if not jumped:
-                    # 改进3：运动外推——无远跳时优先飞往漂移预测点（helper 内部已含全部门控；
-                    # 落地后由下一轮主循环正常查询，不污染 Q-learning 记账）
+                    # improvement 3: motion extrapolation - when no long jump, fly to the drift-predicted point first (all gating inside the helper;
+                    # after landing, the next main-loop round queries normally; no Q-learning bookkeeping is polluted)
                     pc = self._motion_predicted_cell()
                     if pc is not None and pc not in self.visited_cells:
                         self.cur_cell = pc
@@ -1111,15 +1111,15 @@ class SpeciesSearcher:
             "found_cells": list(self.found_cells),
             "convergence": self.convergence,
             "feature_log": list(self._feature_log),
-            # v3 覆盖指标显式化：访问网格总数 / 占研究区比例
+            # v3 coverage metric made explicit: visited cells / share of the study region
             "covered_cells": len(self.visited_cells),
             "covered_ratio": len(self.visited_cells) / max(o.nrows * o.ncols, 1),
-            # 优化项2：Stage1 盲扫结束时的覆盖比例（未结束为 None）
+            # optimization 2: coverage ratio at the end of the Stage-1 blind sweep (None if not finished)
             "stage1_end_coverage": self.stage1_end_coverage,
         }
 
 
-# ==================== 基线算法 ====================
+# ==================== Baseline algorithms ====================
 
 def random_baseline(oracle: SpeciesOracle, config: dict, algo_seed: int) -> dict:
     rng = random.Random(algo_seed)

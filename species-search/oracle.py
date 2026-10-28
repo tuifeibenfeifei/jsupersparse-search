@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-"""oracle.py — 稀有物种黑盒查询接口（物种版 cubiomes_wrapper + database）
-黑盒语义：给定 (lat, lon)，返回该位置是否出现目标物种 + 该位置的协变量向量。
-每次查询计入 query_count。与用户框架 cubiomes_wrapper.get_temperature/is_deep_ocean 同构：
-    cubiomes:  (x,z) → (温度, 是否深海)
-    species:   (lat,lon) → (协变量, 是否出现)
+"""oracle.py — rare-species black-box query interface (species-version cubiomes_wrapper + database)
+Black-box semantics: given (lat, lon), return whether the target species is present at that location + the covariate vector at that location.
+Every query increments query_count. Isomorphic to the user framework's cubiomes_wrapper.get_temperature/is_deep_ocean:
+    cubiomes:  (x,z) -> (temperature, whether deep sea)
+    species:   (lat,lon) -> (covariates, whether present)
 """
 from pathlib import Path
 
@@ -13,7 +13,7 @@ DATA = Path(__file__).resolve().parent / "data" / "oracle.npz"
 
 
 class SpeciesOracle:
-    """加载预构建的网格 oracle，提供黑盒查询"""
+    """load the pre-built grid oracle and provide black-box queries"""
 
     def __init__(self, npz_path: Path = DATA):
         d = np.load(npz_path)
@@ -28,7 +28,7 @@ class SpeciesOracle:
         self.study_poly = d["study_poly"]      # [lon_min, lon_max, lat_min, lat_max]
         self.query_count = 0
 
-    # ---- 坐标换算 ----
+    # ---- coordinate conversion ----
     def latlon_to_cell(self, lat: float, lon: float):
         i = int((lat - self.lat0) / self.cell)
         j = int((lon - self.lon0) / self.cell)
@@ -42,9 +42,9 @@ class SpeciesOracle:
     def in_bounds(self, i: int, j: int) -> bool:
         return 0 <= i < self.nrows and 0 <= j < self.ncols
 
-    # ---- 黑盒查询：一次查询 = 一次计数 ----
+    # ---- black-box query: one query = one count ----
     def query(self, lat: float, lon: float):
-        """返回 (presence: bool, cov_vector: np.ndarray)；越界返回 (None, None)"""
+        """return (presence: bool, cov_vector: np.ndarray); return (None, None) when out of bounds"""
         cell = self.latlon_to_cell(lat, lon)
         if cell is None:
             return None, None
@@ -53,13 +53,13 @@ class SpeciesOracle:
         return bool(self.presence[i, j]), self.covs[:, i, j].copy()
 
     def query_cell(self, i: int, j: int):
-        """网格查询：越界查询同样消耗一次预算（黑盒语义），返回 (None, None)"""
+        """grid query: an out-of-bounds query also consumes one budget unit (black-box semantics), return (None, None)"""
         self.query_count += 1
         if not self.in_bounds(i, j):
             return None, None
         return bool(self.presence[i, j]), self.covs[:, i, j].copy()
 
-    # ---- 供实验使用的统计 ----
+    # ---- statistics used by experiments ----
     @property
     def total_cells(self):
         return self.nrows * self.ncols
@@ -72,8 +72,8 @@ class SpeciesOracle:
 
 
 def covariate_guidance_table(oracle: SpeciesOracle, found_cells, n_bins: int = 6):
-    """Stage2 数据积累：统计已发现出现网格的协变量分位数区间（参数→出现概率导向表）
-    返回 {cov_index: (lo, hi)}：出现网格的中部区间（25%~75% 分位），供导向打分
+    """Stage2 data accumulation: compute the covariate percentile interval of found presence cells (parameter -> presence-probability guidance table)
+    return {cov_index: (lo, hi)}: the middle interval (25%-75% percentile) of presence cells, used for guidance scoring
     """
     if not found_cells:
         return None
@@ -91,7 +91,7 @@ def covariate_guidance_table(oracle: SpeciesOracle, found_cells, n_bins: int = 6
 
 
 def guidance_score(oracle: SpeciesOracle, i: int, j: int, table, cov_indices):
-    """导向打分：协变量落在出现区间内的比例（0~1）"""
+    """guidance score: the fraction of covariates falling inside the presence interval (0-1)"""
     if table is None:
         return 0.0
     hit = 0

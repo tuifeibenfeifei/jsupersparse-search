@@ -8,9 +8,9 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""run_framework.py — 稀有物种数据集：运行用户框架（物种版），参数数量对比 2/5/19
-目标：找到 20 个分散出现网格（分散约束 1 cell ≈ 2.8km）；预算 20000 查询。
-输出到 REPO_ROOT/results/species_search/
+"""run_framework.py — Rare species dataset: run user framework (species version), parameter count comparison 2/5/19
+Goal: find 20 dispersed presence cells (dispersion constraint 1 cell ≈ 2.8km); budget 20000 queries.
+Output to REPO_ROOT/results/species_search/
 """
 import csv
 import sys
@@ -19,26 +19,26 @@ from pathlib import Path
 from oracle import SpeciesOracle
 from species_agent import SpeciesSearcher
 
-# 结果输出目录：项目主 results 目录下（非 species-search 内部）
+# Result output directory: under the project main results directory (not inside species-search)
 OUT_DIR = Path(REPO_ROOT / "results/species_search")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-# 默认 oracle：黑麂；可用 argv 指定其他物种 oracle
+# Default oracle: black muntjac; other species oracle can be specified via argv
 ORACLE_PATH = Path(__file__).resolve().parent / "data" / "black_muntjac" / "oracle.npz"
 
-# 集群判定（跨集群覆盖指标）：不同物种按分布定义两个主要集群（网格坐标）
+# Cluster determination (cross-cluster coverage metric): each species defines two main clusters by distribution (grid coordinates)
 CLUSTERS = {
-    # 黑麂：浙皖赣交界
+    # black muntjac: Zhejiang-Anhui-Jiangxi border region
     "black_muntjac": ([(30, 38, 36, 46)], [(103, 104, 19, 24)]),
-    # 云豹：藏东南墨脱 + 滇西北-滇西
+    # clouded leopard: southeastern Tibet Motuo + northwestern-western Yunnan
     "clouded_leopard": ([(40, 70, 0, 55)], [(0, 50, 125, 270)]),
 }
 
-# 框架配置：目标 20 个分散出现网格，预算 20000
+# Framework config: target 20 dispersed presence cells, budget 20000
 BASE_CONFIG = dict(
     target_points=20,
     max_queries=20000,
-    min_dist_cells=1.0,      # 分散约束 1 cell（≈2.8km；0.025°）
+    min_dist_cells=1.0,      # dispersion constraint 1 cell (≈2.8km; 0.025°)
     stage2_min=3,
     stage3_min=5,
     stage3_jump_interval=30,
@@ -49,12 +49,12 @@ BASE_CONFIG = dict(
     cov_in_state=True,
 )
 
-# 参数数量对比：2 / 5 / 19 个气候变量
-# 19 变量索引：0=bio1 ... 11=bio12 ... 18=bio19
+# Parameter count comparison: 2 / 5 / 19 climate variables
+# 19-variable index: 0=bio1 ... 11=bio12 ... 18=bio19
 COV_GROUPS = {
-    "params2": [0, 11],                         # bio1 年均温 + bio12 年降水
-    "params5": [0, 3, 4, 5, 11],                # bio1,bio4,bio5,bio6,bio12（温度3+降水2）
-    "params19": list(range(19)),                # 全部 19 个 BIO 变量
+    "params2": [0, 11],                         # bio1 annual mean temp + bio12 annual precipitation
+    "params5": [0, 3, 4, 5, 11],                # bio1,bio4,bio5,bio6,bio12 (3 temp + 2 precip)
+    "params19": list(range(19)),                # all 19 BIO variables
 }
 
 N_REPEATS = 20
@@ -62,7 +62,7 @@ SEEDS = list(range(101, 101 + N_REPEATS))
 
 
 def main():
-    # 可选：python run_framework.py [params5,params19] [oracle_path] [species_tag]
+    # Optional: python run_framework.py [params5,params19] [oracle_path] [species_tag]
     only = None
     oracle_path = ORACLE_PATH
     species = "black_muntjac"
@@ -70,7 +70,7 @@ def main():
         only = set(sys.argv[1].split(","))
     if len(sys.argv) > 2:
         oracle_path = Path(sys.argv[2])
-        # 由路径推断物种
+        # infer species from path
         sp = str(oracle_path).replace("\\", "/").split("/")[-2]
         if sp in CLUSTERS:
             species = sp
@@ -79,7 +79,7 @@ def main():
     clusters = CLUSTERS.get(species, CLUSTERS["black_muntjac"])
 
     oracle = SpeciesOracle(oracle_path)
-    print(f"[oracle] {oracle.nrows}x{oracle.ncols} = {oracle.total_cells} 网格, "
+    print(f"[oracle] {oracle.nrows}x{oracle.ncols} = {oracle.total_cells} grid, "
           f"presence={int(oracle.presence.sum())} ({oracle.presence.mean()*100:.2f}%)")
     print(f"[config] species={species} target=20, max_queries=20000, min_dist=1 cell\n")
 
@@ -94,7 +94,7 @@ def main():
             res = SpeciesSearcher(oracle, cfg).run_episode(seed)
             found_sum += res["points_found"]
             q_sum += res["total_queries"]
-            # 覆盖广度：found 网格包围盒面积（网格单位）+ 双集群覆盖
+            # Coverage breadth: bounding box area of found cells (grid units) + dual-cluster coverage
             cs = [(int(a), int(b)) for a, b in res["found_cells"]]
             if cs:
                 area = (max(c[0] for c in cs) - min(c[0] for c in cs) + 1) * \
@@ -117,10 +117,10 @@ def main():
         avg_f, avg_q = found_sum / n, q_sum / n
         avg_area, cross_rate = area_sum / n, cross_sum / n
         summary.append([name, avg_f, avg_q, avg_area, cross_rate])
-        print(f"[{name}] 平均点数 {avg_f:.1f}/20 | 平均查询 {avg_q:.0f} | "
-              f"覆盖面积 {avg_area:.0f} 网格 | 双集群覆盖率 {cross_rate:.0%}")
+        print(f"[{name}] avg points {avg_f:.1f}/20 | avg queries {avg_q:.0f} | "
+              f"coverage area {avg_area:.0f} cells | dual-cluster coverage rate {cross_rate:.0%}")
         for r in rows[:5]:
-            print(f"    seed {r[0]}: {r[1]}/20 点, {r[2]} 查询, 覆盖{r[4]}网格, 跨集群{r[5]}")
+            print(f"    seed {r[0]}: {r[1]}/20 points, {r[2]} queries, coverage {r[4]} cells, cross-cluster {r[5]}")
         with open(OUT_DIR / f"framework_species_{species}_{name}.csv", "w", newline="", encoding="utf-8") as f:
             w = csv.writer(f)
             w.writerow(["seed", "points_found", "total_queries", "final_stage",
@@ -136,7 +136,7 @@ def main():
         w = csv.writer(f)
         w.writerow(["algo", "seed", "query", "points", "stage"])
         w.writerows(conv_rows)
-    print("\n[done] 结果已保存 ->", OUT_DIR)
+    print("\n[done] Results saved ->", OUT_DIR)
 
 
 if __name__ == "__main__":

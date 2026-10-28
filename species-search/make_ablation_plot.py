@@ -8,7 +8,7 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""make_ablation_plot.py — 消融对比图（两物种 x 9 配置 x 4 指标）"""
+"""make_ablation_plot.py — ablation comparison figure (two species x 9 configs x 4 metrics)"""
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -35,17 +35,17 @@ OUT = Path(REPO_ROOT / "species-search/results")
 OUT.mkdir(parents=True, exist_ok=True)
 
 NAME_MAP = {
-    "A0_skeleton": "A0 最小骨架\n(无导向/无稀疏/无好奇)",
-    "A1_full_guide": "A1 全参数导向\n(v1 params19)",
-    "A2_sparse_v2base": "A2 自动选择\n(v2 基准)",
-    "A3_sparse_cold150": "A3 +冷启动150",
-    "A4_sparse_directed": "A4 +定向远跳",
-    "A5_sparse_nocuriosity": "A5 无好奇心",
+    "A0_skeleton": "A0 minimal skeleton\n(no guidance/no sparsity/no curiosity)",
+    "A1_full_guide": "A1 full-param guidance\n(v1 params19)",
+    "A2_sparse_v2base": "A2 auto selection\n(v2 baseline)",
+    "A3_sparse_cold150": "A3 + cold start 150",
+    "A4_sparse_directed": "A4 + directed long jump",
+    "A5_sparse_nocuriosity": "A5 no curiosity",
     "A6_sparse_topk4": "A6 topK=4",
-    "A7_sparse_bins4": "A7 分箱=4",
-    "A8_sparse_bins16": "A8 分箱=16",
-    "A9_sparse_cluster": "A9 聚类导向",
-    "A10_sparse_cluster_directed": "A10 聚类\n+定向远跳",
+    "A7_sparse_bins4": "A7 binning=4",
+    "A8_sparse_bins16": "A8 binning=16",
+    "A9_sparse_cluster": "A9 cluster guidance",
+    "A10_sparse_cluster_directed": "A10 cluster\n+ directed long jump",
 }
 
 data = {}
@@ -68,13 +68,13 @@ fig, axes = plt.subplots(1, 4, figsize=(16.5, 5.9))
 x = np.arange(len(configs))
 w = 0.32
 colors = {"black_muntjac": "#4C78A8", "clouded_leopard": "#F2A900"}
-names = {"black_muntjac": "黑麂", "clouded_leopard": "云豹"}
+names = {"black_muntjac": "black muntjac", "clouded_leopard": "clouded leopard"}
 
 for ax, key, title in [
-        (axes[0], "points", "找到点数 (目标20)"),
-        (axes[1], "queries", "平均查询次数"),
-        (axes[2], "covered", "覆盖网格数"),
-        (axes[3], "dual", "双集群覆盖率 (%)")]:
+        (axes[0], "points", "points found (target 20)"),
+        (axes[1], "queries", "mean number of queries"),
+        (axes[2], "covered", "covered grid cells"),
+        (axes[3], "dual", "dual-cluster coverage (%)")]:
     for si, sp in enumerate(["black_muntjac", "clouded_leopard"]):
         vals = [data[sp][c][key] for c in configs]
         ax.bar(x + (si - 0.5) * w, vals, w, label=names[sp], color=colors[sp])
@@ -87,7 +87,7 @@ for ax, key, title in [
     ax.set_ylim(0, max(max(data[sp][c][key] for c in configs) for sp in data) * 1.18)
     ax.grid(alpha=0.3, axis="y")
 axes[0].legend(fontsize=9.5)
-fig.suptitle("稀有物种线消融实验：导向 / 特征选择 / 冷启动 / 定向跳 / 好奇心 / topK / 分箱数 / 聚类感知（20 seeds 平均）",
+fig.suptitle("Rare-species line ablation: guidance / feature selection / cold start / directed jump / curiosity / topK / number of bins / cluster-aware (mean over 20 seeds)",
              fontsize=13, y=1.03)
 fig.tight_layout()
 fig.savefig(OUT / "species_ablation_comparison.png", dpi=150, bbox_inches="tight")

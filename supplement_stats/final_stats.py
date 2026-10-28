@@ -6,10 +6,10 @@ for _ in range(8):
     if (REPO_ROOT / 'configs').is_dir():
         break
     REPO_ROOT = REPO_ROOT.parent
-"""全量统一替换所需的剩余统计量（一次性算清）。
+"""Remaining statistics needed for the global unified replacement (computed once).
 
-输入 ablation_detail.csv（full/AUC_off/multicluster_off）与 screen_off_arms.csv；
-输出 final_stats.csv：chl/cl 各四组配对（queries/points，单尾 p + Cliff's δ，chl screen-off 另加 bootstrap 95% CI）。
+Input: ablation_detail.csv (full/AUC_off/multicluster_off) and screen_off_arms.csv.
+Output: final_stats.csv - for chl/cl four paired comparisons each (queries/points, one-sided p + Cliff delta, plus bootstrap 95% CI for chl screen-off).
 """
 import csv
 from pathlib import Path
@@ -62,7 +62,7 @@ def analyze(scene, other, metric):
         alt = load_abl(scene, other, metric)
     idx = sorted(set(full) & set(alt))
     a = [full[i] for i in idx]   # a = full
-    b = [alt[i] for i in idx]    # b = 对照臂
+    b = [alt[i] for i in idx]    # b = comparison arm
     d = np.asarray(a) - np.asarray(b)
     p_gt = stats.wilcoxon(d, zero_method="wilcox", alternative="greater").pvalue
     p_lt = stats.wilcoxon(d, zero_method="wilcox", alternative="less").pvalue

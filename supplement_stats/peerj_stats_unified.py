@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""统一统计呈现：从已有 CSV 重算（不重跑实验）。
+"""Unified statistics presentation: recompute from existing CSVs (do not rerun experiments).
 
-输入 ablation_detail.csv（3 场景 × full/AUC_off/multicluster_off）与 screen_mi_vs_auc.csv；
-输出 peerj_stats_unified.csv（统一统计长表），另打印 Wilson CI 与锚点自检。
+Inputs ablation_detail.csv (3 scenarios x full/AUC_off/multicluster_off) and screen_mi_vs_auc.csv;
+Outputs peerj_stats_unified.csv (unified stats long table), also prints Wilson CI and anchor self-check.
 """
 import csv
 import math
@@ -19,7 +19,7 @@ OUT_CSV = ROOT / "supplement_stats" / "peerj_stats_unified.csv"
 ALGO_SEEDS = list(range(101, 121))   # 101..120
 
 
-# 读 ablation
+# Read ablation
 def load_ablation():
     rows = []
     with open(ABL, encoding="utf-8") as f:
@@ -48,7 +48,7 @@ def cliff_delta(a, b):
 
 
 def paired_compare(rows, scenario, variant, metric):
-    """配对：variant - full；MC 按 (world,algo) 配对，其余按 algo_seed。"""
+    """Paired: variant - full; MC paired by (world, algo), others by algo_seed."""
     key = ("world_seed", "algo_seed") if scenario == "minecraft" else ("algo_seed",)
     full = {}
     var = {}
@@ -66,7 +66,7 @@ def paired_compare(rows, scenario, variant, metric):
 
 
 def one_sided_wilcoxon(d, alternative):
-    """配对 Wilcoxon 符号秩（单尾）；全 0 diff 返回 p=1.0。"""
+    """Paired Wilcoxon signed-rank (one-tailed); all-zero diff returns p=1.0."""
     if np.all(d == 0):
         return 1.0
     try:
@@ -88,24 +88,24 @@ def wilson_ci(phat, n, z=1.959963984540054):
 def main():
     rows = load_ablation()
 
-    # 锚点自检
-    print("=== 锚点自检（chlorophyll 20-seed mean total_queries）===")
+    # Anchor self-check
+    print("=== Anchor self-check (chlorophyll 20-seed mean total_queries) ===")
     for v, expect in [("full", 1596.25), ("AUC_off", 1805.0), ("multicluster_off", 958.0)]:
         vals = [r["total_queries"] for r in rows if r["scenario"] == "chlorophyll" and r["variant"] == v]
         m = float(np.mean(vals))
         ok = abs(m - expect) <= 5.0
         print(f"  chlorophyll/{v:16s} mean={m:8.2f}  expect~{expect:8.2f}  n={len(vals)}  {'OK' if ok else 'MISMATCH'}")
 
-    # 统一表：每场景 × {AUC_off, multicluster_off} × {total_queries, points_found}
-    # 单尾方向（与 harmful_arms_paired.csv 预注册假设一致）：
-    #   AUC_off        : 关掉引导应使查询更多(greater)、命中更少(less)
-    #   multicluster_off: 关掉多簇应使查询更少(less，H2)、命中更少(less)
+    # Unified table: each scenario x {AUC_off, multicluster_off} x {total_queries, points_found}
+    # One-tailed direction (consistent with harmful_arms_paired.csv pre-registered hypotheses):
+    #   AUC_off        : disabling guidance should make queries more (greater), hits fewer (less)
+    #   multicluster_off: disabling multicluster should make queries fewer (less, H2), hits fewer (less)
     spec = {
         "AUC_off":          {"total_queries": "greater", "points_found": "less"},
         "multicluster_off":  {"total_queries": "less",    "points_found": "less"},
     }
     out = []
-    print("\n=== 统一比较表（Δ = variant - full）===")
+    print("\n=== Unified comparison table (delta = variant - full) ===")
     hdr = ["scenario", "variant", "metric", "n_pairs",
            "delta_mean", "delta_sd", "wilcoxon_p_onesided", "cliff_delta",
            "direction", "sig_note"]
@@ -119,17 +119,17 @@ def main():
                 cd = cliff_delta(d, np.zeros_like(d))
                 dm, ds = float(np.mean(d)), float(np.std(d, ddof=1)) if len(d) > 1 else 0.0
                 if dm > 0:
-                    direction = "variant>full(off 更多)"
+                    direction = "variant>full(off more)"
                 elif dm < 0:
-                    direction = "variant<full(off 更少)"
+                    direction = "variant<full(off fewer)"
                 else:
-                    direction = "无差异"
+                    direction = "no difference"
                 if np.isnan(p):
-                    note = "无法检验(全同)"
+                    note = "cannot test (all identical)"
                 elif p < 0.05:
-                    note = "p<0.05 显著"
+                    note = "p<0.05 significant"
                 else:
-                    note = "n.s.（p>=0.05，方向仅作假设）"
+                    note = "n.s. (p>=0.05, direction hypothesis only)"
                 out.append([scenario, variant, metric, len(keys),
                             round(dm, 3), round(ds, 3), p, round(cd, 4),
                             direction, note])
@@ -143,26 +143,26 @@ def main():
     print(f"\n[saved] {OUT_CSV}  ({len(out)} rows)")
 
     # Wilson
-    print("\n=== 选择器 precision 0.763 的 Wilson 95% CI ===")
+    print("\n=== Wilson 95% CI for selector precision 0.763 ===")
     scr_rows = []
     with open(SCR, encoding="utf-8") as f:
         for r in csv.DictReader(f):
             if r["sel_true"] == "":
                 continue
             scr_rows.append(r)
-    print(f"  有效逐事件行数(sel_true 非空) = {len(scr_rows)}")
+    print(f"  Valid per-event rows (sel_true non-empty) = {len(scr_rows)}")
     for screen in ["auc", "mi"]:
         sub = [r for r in scr_rows if r["screen"] == screen]
         tp = sum(int(r["sel_true"]) for r in sub)
         fp = sum(int(r["sel_noise"]) for r in sub)
-        # 逐事件保留数 = sel_true+sel_noise（观测到 6 或 7 两种），pool 求和
+        # Per-event retained count = sel_true+sel_noise (observed as 6 or 7), pooled sum
         n = tp + fp
         phat = tp / n
         lo, hi = wilson_ci(phat, n)
         print(f"  [screen={screen:3s}] events={len(sub)} "
-              f"TP(真信号保留)={tp}  FP(噪声保留)={fp}  n={n}  "
+              f"TP(true signal retained)={tp}  FP(noise retained)={fp}  n={n}  "
               f"p̂={phat:.4f}  Wilson95%CI=[{lo:.4f},{hi:.4f}]")
-        print(f"        机会水平 7/19={7/19:.4f}；是否落在 CI 外: {not (lo <= 7/19 <= hi)}")
+        print(f"        Chance level 7/19={7/19:.4f}; outside CI: {not (lo <= 7/19 <= hi)}")
 
 
 if __name__ == "__main__":

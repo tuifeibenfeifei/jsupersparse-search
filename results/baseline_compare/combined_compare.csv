@@ -1,17 +1,17 @@
 scenario_key,scenario,target,method,mean_points_found,mean_total_queries,hit_rate,source
-pollution,污染溯源,15,framework,15.0,185.4,1.000,"regress_v2 (已跑,引用)"
-pollution,污染溯源,15,random,15.0,219.9,1.000,本次 baseline_compare
-pollution,污染溯源,15,grid,0.0,800.0,0.000,本次 baseline_compare
-pollution,污染溯源,15,hill_climb,15.0,58.3,1.000,本次 baseline_compare
-maritime,海上搜救,15,framework,1.0,600.0,0.067,"regress_v2 (已跑,引用)"
-maritime,海上搜救,15,random,0.5,600.0,0.000,本次 baseline_compare
-maritime,海上搜救,15,grid,0.0,600.0,0.000,本次 baseline_compare
-maritime,海上搜救,15,hill_climb,5.9,501.6,0.300,本次 baseline_compare
-driftA,逆向漂移·阶段A,6,framework,2.8,397.5,0.467,"regress_v2 (已跑,引用)"
-driftA,逆向漂移·阶段A,6,random,2.0,400.0,0.000,本次 baseline_compare
-driftA,逆向漂移·阶段A,6,grid,0.0,400.0,0.000,本次 baseline_compare
-driftA,逆向漂移·阶段A,6,hill_climb,4.8,257.9,0.600,本次 baseline_compare
-mineralA,矿化露头·阶段A,10,framework,10.0,255.5,1.000,"regress_v2 (已跑,引用)"
-mineralA,矿化露头·阶段A,10,random,10.0,274.1,1.000,本次 baseline_compare
-mineralA,矿化露头·阶段A,10,grid,10.0,477.0,1.000,本次 baseline_compare
-mineralA,矿化露头·阶段A,10,hill_climb,10.0,48.8,1.000,本次 baseline_compare
+pollution,pollution source tracing,15,framework,15.0,185.4,1.000,"regress_v2 (already run, cited)"
+pollution,pollution source tracing,15,random,15.0,219.9,1.000,this baseline_compare
+pollution,pollution source tracing,15,grid,0.0,800.0,0.000,this baseline_compare
+pollution,pollution source tracing,15,hill_climb,15.0,58.3,1.000,this baseline_compare
+maritime,maritime search and rescue,15,framework,1.0,600.0,0.067,"regress_v2 (already run, cited)"
+maritime,maritime search and rescue,15,random,0.5,600.0,0.000,this baseline_compare
+maritime,maritime search and rescue,15,grid,0.0,600.0,0.000,this baseline_compare
+maritime,maritime search and rescue,15,hill_climb,5.9,501.6,0.300,this baseline_compare
+driftA,reverse drift (stage A),6,framework,2.8,397.5,0.467,"regress_v2 (already run, cited)"
+driftA,reverse drift (stage A),6,random,2.0,400.0,0.000,this baseline_compare
+driftA,reverse drift (stage A),6,grid,0.0,400.0,0.000,this baseline_compare
+driftA,reverse drift (stage A),6,hill_climb,4.8,257.9,0.600,this baseline_compare
+mineralA,mineralized outcrop (stage A),10,framework,10.0,255.5,1.000,"regress_v2 (already run, cited)"
+mineralA,mineralized outcrop (stage A),10,random,10.0,274.1,1.000,this baseline_compare
+mineralA,mineralized outcrop (stage A),10,grid,10.0,477.0,1.000,this baseline_compare
+mineralA,mineralized outcrop (stage A),10,hill_climb,10.0,48.8,1.000,this baseline_compare

@@ -8,23 +8,23 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""run_ablation_species.py — 稀有物种线详细消融实验（两物种 × 9 配置 × 20 seeds）
-对比维度：
-  A0 skeleton          导向 OFF + 稀疏 OFF + 好奇心 0（最小骨架）
-  A1 full_guide       导向 ON + 稀疏 OFF（全 19 参数导向，= v1 params19）
-  A2 sparse (v2 基准)  自动特征选择（AUC 稀疏）
-  A3 sparse+cold150    冷启动阈值 150
-  A4 sparse+directed   定向远跳
-  A5 sparse+no_curi    好奇心权重 0
-  A6 sparse+topk4      Stage2 候选 topK=4
-  A7 sparse+bins4      分箱数 4
-  A8 sparse+bins16     分箱数 16
-  A9 sparse+cluster    聚类感知导向（多模态候选按簇分散）
-  A10 sparse+cluster+directed  聚类感知导向 + 定向远跳（远跳按簇分散）
-输出：results/species_search/ablation_species/
-  ablation_species_{species}_detail.csv   每 seed 明细
-  ablation_species_{species}_summary.csv  每配置聚合（点数/查询/覆盖/双集群/成功率）
-用法：python run_ablation_species.py <oracle_path> <species> <A_boxes> <B_boxes> [n_seeds]
+"""run_ablation_species.py — Rare species line detailed ablation experiment (2 species × 9 configs × 20 seeds)
+Comparison dimensions:
+  A0 skeleton          guidance OFF + sparse OFF + curiosity 0 (minimal skeleton)
+  A1 full_guide       guidance ON + sparse OFF (all 19-parameter guidance, = v1 params19)
+  A2 sparse (v2 baseline)  automatic feature selection (AUC sparse)
+  A3 sparse+cold150    cold-start threshold 150
+  A4 sparse+directed   directed long jump
+  A5 sparse+no_curi    curiosity weight 0
+  A6 sparse+topk4      Stage2 candidate topK=4
+  A7 sparse+bins4      number of bins 4
+  A8 sparse+bins16     number of bins 16
+  A9 sparse+cluster    cluster-aware guidance (multimodal candidates dispersed by cluster)
+  A10 sparse+cluster+directed  cluster-aware guidance + directed long jump (long jumps dispersed by cluster)
+Output: results/species_search/ablation_species/
+  ablation_species_{species}_detail.csv   per-seed details
+  ablation_species_{species}_summary.csv  per-config aggregation (points/queries/coverage/dual-cluster/success rate)
+Usage: python run_ablation_species.py <oracle_path> <species> <A_boxes> <B_boxes> [n_seeds]
 """
 import csv
 import sys
@@ -47,7 +47,7 @@ BASE = dict(
     sparse_guidance=True, sparse_topk=6, sparse_min_pos=5,
 )
 
-# 9 个消融配置（在 BASE 上改）
+# 9 ablation configs (modified on top of BASE)
 CONFIGS = [
     ("A0_skeleton",        dict(guidance_on=False, sparse_guidance=False, curiosity_weight=0.0)),
     ("A1_full_guide",      dict(guidance_on=True,  sparse_guidance=False)),
@@ -85,7 +85,7 @@ def main():
 
     oracle = SpeciesOracle(oracle_path)
     print(f"[oracle] {oracle.nrows}x{oracle.ncols}, presence={int(oracle.presence.sum())}, "
-          f"研究区 {oracle.nrows * oracle.ncols} 单元, {len(CONFIGS)} 配置 x {n_seeds} seeds")
+          f"study area {oracle.nrows * oracle.ncols} cells, {len(CONFIGS)} configs x {n_seeds} seeds")
 
     detail_all = []
     summary_rows = []
@@ -107,9 +107,9 @@ def main():
         summary_rows.append([cname, round(mean(pts), 2), round(mean(qrs), 0),
                              round(mean(covs), 0), round(100.0 * sum(duals) / n, 1),
                              round(100.0 * succ / n, 1)])
-        print(f"  {cname:22s} 点 {summary_rows[-1][1]:6.2f} | 查询 {summary_rows[-1][2]:6.0f} | "
-              f"覆盖 {summary_rows[-1][3]:6.0f} | 双集群 {summary_rows[-1][4]:5.1f}% | "
-              f"跑满 {summary_rows[-1][5]:5.1f}%")
+        print(f"  {cname:22s} pts {summary_rows[-1][1]:6.2f} | queries {summary_rows[-1][2]:6.0f} | "
+              f"coverage {summary_rows[-1][3]:6.0f} | dual-cluster {summary_rows[-1][4]:5.1f}% | "
+              f"full target {summary_rows[-1][5]:5.1f}%")
 
     with open(OUT_DIR / f"ablation_species_{species}_detail.csv", "w",
               newline="", encoding="utf-8") as f:

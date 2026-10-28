@@ -8,9 +8,9 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""fetch_chlorophyll.py — 下载 ESA CCI 孟加拉湾叶绿素月平均（真实数据）
-区域：10-20N x 85-95E，2024-06，0.04° 网格（约 200x200=40000 点）
-输出：data/raw_chlorophyll.csv
+"""fetch_chlorophyll.py - download ESA CCI monthly mean chlorophyll for the Bay of Bengal (real data).
+Region: 10-20N x 85-95E, 2024-06, 0.04 deg grid (about 200x200 = 40000 points).
+Output: data/raw_chlorophyll.csv
 """
 import csv
 import urllib.request
@@ -26,7 +26,7 @@ req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
 raw = urllib.request.urlopen(req, timeout=120).read().decode("utf-8", "replace")
 lines = raw.splitlines()
 print("lines:", len(lines), "first:", lines[0] if lines else "")
-# 去掉前两行表头说明（time/UTC 行）
+# drop the leading header comment lines (time/UTC rows)
 data_lines = [l for l in lines if l and not l.startswith("UTC") and l != "time,latitude,longitude,chlor_a"]
 with open(OUT / "raw_chlorophyll.csv", "w", newline="", encoding="utf-8") as f:
     w = csv.writer(f)

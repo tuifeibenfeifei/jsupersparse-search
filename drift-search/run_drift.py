@@ -8,22 +8,22 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""run_drift.py — 海上搜救逆向漂移 顺序解码双阶段 A→B 实验。
+"""run_drift.py - maritime search and rescue reverse-drift sequential decoding two-stage A->B experiment.
 
-sys.path 导入复用 species-search/species_agent.py::SpeciesSearcher（不修改框架本体）。
-黑盒 oracle = drift-search/drift_oracle.py::DriftOracle（物理仿真）。
+sys.path imports reuse species-search/species_agent.py::SpeciesSearcher (framework itself is not modified).
+Black-box oracle = drift-search/drift_oracle.py::DriftOracle (physics simulation).
 
-管线（每 seed 一次完整 A→B，单进程顺序跑）：
-  阶段 A：当前时空，SpeciesSearcher 搜冻结残骸快照（budget=400, target=6, 19 cov）。
-  解码 wrapper：取 A 的发现点，逐点反向平流 -(C + L̂·W)·T_A 得候选失事点，
-            质心 + 不确定半径(±10格)；构造"到解码质心距离"协变量。
-  阶段 B：过去时空，新 SpeciesSearcher + 增强 oracle（20 cov，presence=P0 静态证据）
-            搜失事点（budget=300, target=3）。
+Pipeline (one full A->B per seed, run sequentially in a single process):
+  Stage A: current space-time, SpeciesSearcher searches the frozen debris snapshot (budget=400, target=6, 19 cov).
+  Decode wrapper: take A's discovered points, backward advect each point by -(C + L_hat*W)*T_A to get candidate wreck points,
+            centroid + uncertainty radius (+/-10 cells); construct a "distance to decoded centroid" covariate.
+  Stage B: past space-time, a new SpeciesSearcher + augmented oracle (20 cov, presence=P0 static evidence)
+            searches for wreck points (budget=300, target=3).
 
-输出：
-  results/drift_search/drift_detail.csv   逐 seed
-  results/drift_search/drift_summary.csv  3 seed 均值
-  results/drift_search/_run_artifacts.npz 供绘图/报告
+Outputs:
+  results/drift_search/drift_detail.csv   per seed
+  results/drift_search/drift_summary.csv  mean over 3 seeds
+  results/drift_search/_run_artifacts.npz for plotting/reporting
 """
 import csv
 import sys
@@ -34,8 +34,8 @@ from pathlib import Path
 import numpy as np
 
 ROOT = Path(REPO_ROOT)
-sys.path.insert(0, str(ROOT / "species-search"))        # 框架本体
-sys.path.insert(0, str(ROOT / "drift-search"))          # 本场景 oracle
+sys.path.insert(0, str(ROOT / "species-search"))        # framework itself
+sys.path.insert(0, str(ROOT / "drift-search"))          # this scenario's oracle
 
 from species_agent import SpeciesSearcher     # noqa: E402
 from drift_oracle import DriftOracle          # noqa: E402
@@ -46,7 +46,7 @@ LOG = OUT / "progress.log"
 
 SEEDS = [101, 102, 103]
 
-# F 定稿默认键（同 species/regress_opt_F BASE），按任务书覆盖预算/目标/维度
+# F-final default keys (same as species/regress_opt_F BASE); override budget/target/dims per task spec
 CFG_A = dict(
     target_points=6, max_queries=400, min_dist_cells=2.0,
     stage2_min=3, stage3_min=5, stage3_jump_interval=30,
@@ -76,7 +76,7 @@ CFG_B = dict(
     cov_indices=list(range(20)),
 )
 
-DECODE_RADIUS_CELL = 10   # 解码不确定半径（格），±10 格 = 20 km
+DECODE_RADIUS_CELL = 10   # decode uncertainty radius (cells), +/-10 cells = 20 km
 
 
 def log(msg):
@@ -87,7 +87,7 @@ def log(msg):
 
 
 def auc_scores_from_queries(queries, cov_indices):
-    """复现框架 Mann-Whitney AUC（方向无关），从最终已查询样本统计每个协变量分离度。"""
+    """Reproduce the framework's Mann-Whitney AUC (direction-agnostic), measuring per-covariate separability from the final queried samples."""
     covs = np.array([q[0] for q in queries], dtype=float)
     pres = np.array([q[1] for q in queries], dtype=float)
     out = {}
@@ -122,22 +122,22 @@ def auc_scores_from_queries(queries, cov_indices):
 
 def main():
     open(LOG, "w", encoding="utf-8").close()
-    # 阶段 A oracle（covs/presence 跨 seed 不变，复用一个实例）
+    # Stage A oracle (covs/presence are constant across seeds; reuse one instance)
     oracleA = DriftOracle(ROOT / "drift-search" / "data" / "stageA.npz")
     cell = oracleA.cell_km
     P0 = (oracleA.P0_x, oracleA.P0_y)
-    # 解码代表量
+    # Decoded representative quantities
     cu_p0, cv_p0 = oracleA.cu_p0, oracleA.cv_p0
     wu_m, wv_m = oracleA.wu_mean, oracleA.wv_mean
     L_hat = oracleA.leeway_hat
     T_A = oracleA.T_A_h
     disp_dec = np.array([cu_p0 + L_hat * wu_m * 3.6,
                          cv_p0 + L_hat * wv_m * 3.6]) * T_A   # km
-    log(f"阶段A oracle {oracleA.nrows}x{oracleA.ncols} presence={int(oracleA.presence.sum())} "
+    log(f"StageA oracle {oracleA.nrows}x{oracleA.ncols} presence={int(oracleA.presence.sum())} "
         f"({oracleA.presence.mean()*100:.2f}%)  P0=({P0[0]:.1f},{P0[1]:.1f})km")
-    log(f"解码代表位移=({disp_dec[0]:.2f},{disp_dec[1]:.2f})km  L̂={L_hat} T_A={T_A}h")
+    log(f"Decoded displacement=({disp_dec[0]:.2f},{disp_dec[1]:.2f})km  L_hat={L_hat} T_A={T_A}h")
 
-    # 坐标网格（km）供构造阶段 B 第20协变量
+    # Coordinate grid (km) for constructing Stage B's 20th covariate
     ii, jj = np.meshgrid(np.arange(oracleA.nrows), np.arange(oracleA.ncols), indexing="ij")
     Xg = (jj + 0.5) * cell
     Yg = (ii + 0.5) * cell
@@ -147,12 +147,12 @@ def main():
 
     for seed in SEEDS:
         t0 = time.time()
-        # ---------- 阶段 A ----------
+        # ---------- Stage A ----------
         searcherA = SpeciesSearcher(oracleA, CFG_A)
         resA = searcherA.run_episode(seed)
         foundA = resA["found_cells"]
 
-        # ---------- 解码 wrapper：发现点反向平流 ----------
+        # ---------- Decode wrapper: backward advect discovered points ----------
         if foundA:
             fk = np.array(foundA, dtype=float)
             fx = (fk[:, 1] + 0.5) * cell   # east km
@@ -167,21 +167,21 @@ def main():
             err_km = float("nan")
             cx_c = cy_c = float("nan")
 
-        # ---------- 阶段 B：增强 oracle（追加第20协变量）----------
+        # ---------- Stage B: augmented oracle (append 20th covariate) ----------
         oracleB = DriftOracle(ROOT / "drift-search" / "data" / "stageB.npz")
         if foundA:
             dist_band = np.sqrt((Xg - centroid[0]) ** 2 + (Yg - centroid[1]) ** 2)
         else:
             dist_band = np.zeros_like(Xg)
-        oracleB.append_covariate(dist_band, "到解码质心距离(km)")
+        oracleB.append_covariate(dist_band, "distance to decoded centroid(km)")
 
         searcherB = SpeciesSearcher(oracleB, CFG_B)
         resB = searcherB.run_episode(seed)
         foundB = resB["found_cells"]
 
-        # B 命中：是否在 P0 静态证据区内找到点（presenceB 即 P0 盘，故 foundB>0 即命中）
+        # B hit: whether a point is found inside the P0 static evidence region (presenceB is the P0 disk, so foundB>0 means hit)
         B_hit = bool(len(foundB) > 0)
-        # B 发现点到真 P0 的距离（km）
+        # Distance from B's discovered points to the true P0 (km)
         if foundB:
             fb = np.array(foundB, dtype=float)
             fb_x = (fb[:, 1] + 0.5) * cell
@@ -190,10 +190,10 @@ def main():
         else:
             B_to_P0_km = float("nan")
 
-        # B 阶段 AUC（20 协变量）
+        # Stage B AUC (20 covariates)
         aucB = auc_scores_from_queries(searcherB._queries, list(range(20)))
         keptB = searcherB._feature_log[-1][2] if searcherB._feature_log else []
-        # 第 20 协变量是否被框架选中
+        # Whether the 20th covariate was selected by the framework
         sel_idx = 19
         sel_weight = dict(keptB).get(sel_idx, 0.0)
         sel_auc = aucB.get(sel_idx, 0.5)
@@ -201,12 +201,12 @@ def main():
 
         dt = time.time() - t0
         log(f"seed={seed} A: pts={resA['points_found']}/6 q={resA['total_queries']} "
-            f"| 解码质心=({centroid[0]:.1f},{centroid[1]:.1f})km err={err_km:.1f}km "
+            f"| decoded_centroid=({centroid[0]:.1f},{centroid[1]:.1f})km err={err_km:.1f}km "
             f"| B: pts={resB['points_found']}/3 q={resB['total_queries']} hit={B_hit} "
-            f"B→P0={B_to_P0_km:.1f}km | AUC[到质心]={sel_auc:.3f} selected={selected} "
-            f"用时{dt:.1f}s")
+            f"B_to_P0={B_to_P0_km:.1f}km | AUC[dist_to_centroid]={sel_auc:.3f} selected={selected} "
+            f"elapsed={dt:.1f}s")
 
-        # 访问格热图
+        # Visited-cell heatmap
         visA = np.zeros((oracleA.nrows, oracleA.ncols), dtype=np.uint8)
         for (i, j) in searcherA.visited_cells:
             if oracleA.in_bounds(i, j):
@@ -249,7 +249,7 @@ def main():
                     "auc_dist_centroid", "B_selected_dist_cov"])
         w.writerows(detail_rows)
 
-    # ---- summary.csv（3 seed 均值）----
+    # ---- summary.csv (mean over 3 seeds) ----
     def _mean(idx):
         vals = [r[idx] for r in detail_rows if isinstance(r[idx], (int, float)) and r[idx] == r[idx]]
         return sum(vals) / len(vals) if vals else float("nan")

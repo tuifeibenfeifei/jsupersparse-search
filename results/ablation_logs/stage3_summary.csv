@@ -1,0 +1,5 @@
+﻿label,mean_points,std_points,mean_queries,std_queries,success_rate,target_reached_count,n_runs
+all_on (all-on control),40.0,0.0,2083.25,818.9994123929516,1.0,400,400
+no_deep (deep-sea off),40.0,0.0,2095.51,808.4926962564354,1.0,400,400
+no_curiosity (curiosity off),40.0,0.0,1992.415,664.2769435822685,1.0,400,400
+no_penalty (penalty off),40.0,0.0,2585.9,1393.990950472778,1.0,400,400

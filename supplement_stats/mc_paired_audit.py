@@ -6,12 +6,12 @@ for _ in range(8):
     if (REPO_ROOT / 'configs').is_dir():
         break
     REPO_ROOT = REPO_ROOT.parent
-"""Minecraft 配对检验复算（论文 TABLE XI 前四行）。
+"""Minecraft paired-test recomputation (the first four rows of TABLE XI in the paper).
 
-n=20 时单侧精确 Wilcoxon 无法产生 p=0.055，本脚本用 results/minecraft_search/ 逐 run 数据
-复算四个比较并列多种检验口径，用于澄清或改正论文表述。
-数据：framework_mc_detail.csv（20 world × 20 algo seeds）、baseline_mc_random / hill_climb / grid（20 world × 5 seeds）。
-口径：world-level mean → 20 配对。
+With n=20, the one-sided exact Wilcoxon cannot produce p=0.055; this script uses the per-run data under results/minecraft_search/
+to recompute the four comparisons under multiple test specifications, in order to clarify or correct the paper statements.
+Data: framework_mc_detail.csv (20 worlds x 20 algo seeds), baseline_mc_random / hill_climb / grid (20 worlds x 5 seeds).
+Specification: world-level mean -> 20 pairs.
 """
 import csv
 from pathlib import Path
@@ -37,7 +37,7 @@ def report(name, a_pts, b_pts, a_q, b_q, expect=None):
     print(f"[{name}]  n={len(a_pts)}  mean_a={np.mean(a_pts):.3f}  mean_b={np.mean(b_pts):.3f}  "
           f"diff={np.mean(a_pts)-np.mean(b_pts):+.3f}")
     if expect:
-        print(f"    论文值: {expect}")
+        print(f"    paper value: {expect}")
     d = np.asarray(a_pts) - np.asarray(b_pts)  # a - b
     for method in ("auto", "exact", "approx"):
         for alt in ("greater", "less", "two-sided"):
@@ -82,7 +82,7 @@ report("framework vs grid (hits)",
        [fw[w][0] for w in worlds], [grid[w][0] for w in worlds], None, None,
        "p = 0.001, diff = +16.115")
 
-# 4) vs random, queries on attainable subset（最宽松定义：框架 world-mean hits 达 40 的世界）
+# 4) vs random, queries on attainable subset (loosest definition: worlds where the framework world-mean hits reach 40)
 attain = [w for w in worlds if abs(fw[w][0] - 40) < 1e-9]
 print("=" * 72)
 print(f"[attainable subset: framework world-mean hits == 40] worlds={attain}")

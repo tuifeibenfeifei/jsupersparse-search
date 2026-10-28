@@ -8,7 +8,7 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""make_chl_plot.py — 叶绿素跨领域实验对比图"""
+"""make_chl_plot.py — chlorophyll cross-domain experiment comparison figure"""
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -35,14 +35,14 @@ OUT = Path(REPO_ROOT / "chlorophyll-search/results")
 OUT.mkdir(parents=True, exist_ok=True)
 
 NAME_MAP = {
-    "CHL0_skeleton": "CHL0 无参数骨架",
-    "CHL1_full19": "CHL1 全19参数导向\n(7结构+12噪声)",
-    "CHL2_sparse": "CHL2 AUC自动选择",
-    "CHL3_params2": "CHL3 2结构参数\n(sst+sss)",
-    "CHL4_params5": "CHL4 5结构参数",
-    "CHL5_params7": "CHL5 7结构参数",
-    "CHL6_cluster": "CHL6 聚类+分散远跳",
-    "CHL7_adaptive": "CHL7 自适应开关\n(在线诊断)",
+    "CHL0_skeleton": "CHL0 no-parameter skeleton",
+    "CHL1_full19": "CHL1 full 19-param guidance\n(7 structural + 12 noise)",
+    "CHL2_sparse": "CHL2 AUC auto selection",
+    "CHL3_params2": "CHL3 2 structural params\n(sst+sss)",
+    "CHL4_params5": "CHL4 5 structural params",
+    "CHL5_params7": "CHL5 7 structural params",
+    "CHL6_cluster": "CHL6 cluster + dispersed long jump",
+    "CHL7_adaptive": "CHL7 adaptive switch\n(online diagnostic)",
 }
 
 rows = {}
@@ -61,9 +61,9 @@ x = np.arange(len(configs))
 
 fig, axes = plt.subplots(1, 3, figsize=(14.5, 5.4))
 for ax, key, title, color in [
-        (axes[0], "points", "找到点数 (目标20，预算4000)", "#2E7D32"),
-        (axes[1], "queries", "平均查询次数", "#1565C0"),
-        (axes[2], "succ", "跑满20点率 (%)", "#6A1B9A")]:
+        (axes[0], "points", "points found (target 20, budget 4000)", "#2E7D32"),
+        (axes[1], "queries", "mean number of queries", "#1565C0"),
+        (axes[2], "succ", "rate of reaching 20 points (%)", "#6A1B9A")]:
     vals = [rows[c][key] for c in configs]
     bars = ax.bar(x, vals, 0.52, color=color)
     for xi, v in zip(x, vals):
@@ -74,7 +74,7 @@ for ax, key, title, color in [
     ax.set_ylim(0, max(vals) * 1.2)
     ax.grid(alpha=0.3, axis="y")
     bars[0].set_label("")
-fig.suptitle("叶绿素跨领域实验：真实CCI高氯热点搜索（20 seeds 平均；7结构参数+12噪声）",
+fig.suptitle("Chlorophyll cross-domain experiment: real CCI high-chlorophyll hotspot search (mean over 20 seeds; 7 structural params + 12 noise)",
              fontsize=13, y=1.02)
 fig.tight_layout()
 fig.savefig(OUT / "chl_comparison.png", dpi=150, bbox_inches="tight")

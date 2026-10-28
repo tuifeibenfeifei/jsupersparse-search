@@ -8,11 +8,11 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""run_mc_budget_curve.py — MC 预算-召回曲线扫描。
+"""run_mc_budget_curve.py — MC budget-recall curve sweep.
 
-对每个方法在预算 B ∈ {500, 1000, 2000, 5000, 10000} 下跑一遍，
-记录在该预算上找到的平均深海点数。
-输出 results/minecraft_search/budget_curve.csv
+For each method, run it under budgets B in {500, 1000, 2000, 5000, 10000},
+recording the mean number of deep-sea points found at that budget.
+Output: results/minecraft_search/budget_curve.csv
 """
 import csv
 import math
@@ -132,7 +132,7 @@ def main():
     rows = []  # method, budget, world_seed, algo_seed, points
 
     # Framework: 20 algo seeds per world
-    log("==== 预算扫描: framework")
+    log("==== budget sweep: framework")
     for b in BUDGETS:
         cfg = framework_cfg(b)
         n_done = 0
@@ -146,7 +146,7 @@ def main():
         log(f"  budget={b:5d} done={n_done}")
 
     # Random: 5 algo seeds per world
-    log("==== 预算扫描: random")
+    log("==== budget sweep: random")
     for b in BUDGETS:
         for ws in WORLD_SEEDS:
             oracle = MCGridOracle(world_seed=ws)
@@ -156,7 +156,7 @@ def main():
         log(f"  budget={b:5d} done")
 
     # Hill climb: 5 algo seeds per world
-    log("==== 预算扫描: hill_climb")
+    log("==== budget sweep: hill_climb")
     for b in BUDGETS:
         for ws in WORLD_SEEDS:
             oracle = MCGridOracle(world_seed=ws)
@@ -170,9 +170,9 @@ def main():
         w = csv.writer(f)
         w.writerow(["method", "budget", "world_seed", "algo_seed", "points_found"])
         w.writerows(rows)
-    log(f"==== 完成 -> {out} ({(time.time()-t_all)/60:.1f} min)")
+    log(f"==== done -> {out} ({(time.time()-t_all)/60:.1f} min)")
 
-    # 打印汇总
+    # print summary
     print("\n=== Budget-Recall Summary (mean points) ===")
     print(f"{'Method':12s}", end="")
     for b in BUDGETS:

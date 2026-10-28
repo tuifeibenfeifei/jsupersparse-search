@@ -6,9 +6,9 @@ for _ in range(8):
     if (REPO_ROOT / 'configs').is_dir():
         break
     REPO_ROOT = REPO_ROOT.parent
-"""补跑 TABLE IX 缺失中间臂：sparse_guidance=False、guidance_on=True（seeds 101-120）。
+"""Rerun TABLE IX missing intermediate arm: sparse_guidance=False, guidance_on=True (seeds 101-120).
 
-输出 screen_off_arms.csv（逐 seed）、screen_off_arms_summary.csv（配对检验）、screen_off_arms.log。
+Output screen_off_arms.csv (per-seed), screen_off_arms_summary.csv (paired test), screen_off_arms.log.
 """
 import argparse
 import csv
@@ -34,9 +34,9 @@ DETAIL_OUT = HERE / "screen_off_arms.csv"
 SUMMARY_OUT = HERE / "screen_off_arms_summary.csv"
 LOG = HERE / "screen_off_arms.log"
 
-SEEDS = list(range(101, 121))  # 与 TABLE IX 声明一致
+SEEDS = list(range(101, 121))  # Consistent with TABLE IX declaration
 
-# 与 run_cross_ablation.py / heldout_seeds.py 完全相同的配置
+# Exactly the same config as run_cross_ablation.py / heldout_seeds.py
 SPP_CFG = dict(
     target_points=20, max_queries=20000, min_dist_cells=1.0,
     stage2_min=3, stage3_min=5, stage3_jump_interval=30,
@@ -72,7 +72,7 @@ ORACLE_PATHS = {
     "clouded_leopard": ROOT / "species-search" / "data" / "clouded_leopard" / "oracle.npz",
     "chlorophyll": ROOT / "chlorophyll-search" / "data" / "oracle.npz",
 }
-SCREEN_OFF_OVERRIDE = {"sparse_guidance": False}  # guidance_on 保持 True
+SCREEN_OFF_OVERRIDE = {"sparse_guidance": False}  # guidance_on remains True
 
 
 def log(msg):
@@ -83,7 +83,7 @@ def log(msg):
 
 
 def wilcox_two_dir(a, b):
-    """返回 (p_a_gt_b, p_a_lt_b)：单尾 Wilcoxon（a>b / a<b），与手稿口径一致（zero_method='wilcox'）。"""
+    """Return (p_a_gt_b, p_a_lt_b): one-tailed Wilcoxon (a>b / a<b), consistent with manuscript convention (zero_method='wilcox')."""
     d = np.asarray(a, float) - np.asarray(b, float)
     p_gt = stats.wilcoxon(d, zero_method="wilcox", alternative="greater").pvalue
     p_lt = stats.wilcoxon(d, zero_method="wilcox", alternative="less").pvalue
@@ -110,7 +110,7 @@ def run_arm(scene, override, seeds):
 
 
 def load_abl(scene, variant):
-    """从 ablation_cross/ablation_detail.csv 读某场景某臂，按 algo_seed 排序。"""
+    """Read a scenario arm from ablation_cross/ablation_detail.csv, sorted by algo_seed."""
     out = {}
     with open(ABL / "ablation_detail.csv", encoding="utf-8-sig") as f:
         for r in csv.DictReader(f):
@@ -122,13 +122,13 @@ def load_abl(scene, variant):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--canary", action="store_true", help="full 配置 1 seed 自检")
-    ap.add_argument("--smoke", type=int, default=0, help="每场景 N seed 试跑")
+    ap.add_argument("--canary", action="store_true", help="full config 1-seed self-check")
+    ap.add_argument("--smoke", type=int, default=0, help="trial run N seeds per scenario")
     a = ap.parse_args()
 
     if LOG.exists():
         LOG.unlink()
-    log("=== screen-off 臂补跑（TABLE IX 中间臂：sparse_guidance=False, guidance_on=True） ===")
+    log("=== screen-off arm rerun (TABLE IX intermediate arm: sparse_guidance=False, guidance_on=True) ===")
 
     # canary
     if a.canary:
@@ -142,12 +142,12 @@ def main():
             all_ok &= ok
             log(f"canary {sc} seed={seed}: got pts={p} q={q} | expect pts={exp_p} q={exp_q} "
                 f"-> {'MATCH' if ok else 'MISMATCH'} ({time.time()-t0:.0f}s)")
-        log(f"canary result: {'ALL MATCH (环境与 ablation_cross 一致)' if all_ok else 'MISMATCH (需排查环境/线程设置)'}")
+        log(f"canary result: {'ALL MATCH (environment consistent with ablation_cross)' if all_ok else 'MISMATCH (investigate environment/thread settings)'}")
         return
 
     seeds = SEEDS[: a.smoke] if a.smoke else SEEDS
 
-    # 1) 补跑 screen-off 臂
+    # 1) Rerun screen-off arm
     t0 = time.time()
     all_rows = []
     for sc in ["chlorophyll", "clouded_leopard"]:
@@ -165,9 +165,9 @@ def main():
             w.writerow(["scenario", "variant", "world_seed", "algo_seed",
                         "points_found", "total_queries"])
             w.writerows(all_rows)
-        log(f"[1/2] 明细 -> {DETAIL_OUT}")
+        log(f"[1/2] Detail -> {DETAIL_OUT}")
 
-    # 2) 统一配对检验（screen_off 新数据 + 既有三臂）
+    # 2) Unified paired test (screen_off new data + existing three arms)
     own = {sc: {"screen_off": {}} for sc in ["chlorophyll", "clouded_leopard"]}
     for sc, v, ws, ag, p, q in all_rows:
         own[sc][v][int(ag)] = (float(p), float(q))
@@ -181,7 +181,7 @@ def main():
             return [src[s][0] for s in sorted(src)]
         return [src[s][1] for s in sorted(src)]
 
-    # (scene, tag, metric) — 全部以 a=full（全框架）、b=对照臂，与 harmful_arms_paired 数值口径一致
+    # (scene, tag, metric) — all with a=full (full framework), b=control arm; consistent with harmful_arms_paired numerical convention
     comparisons = [
         ("chlorophyll", "full_vs_screen_off", "queries"),
         ("chlorophyll", "full_vs_screen_off", "points"),
@@ -193,7 +193,7 @@ def main():
         ("clouded_leopard", "full_vs_multicluster_off", "points"),
     ]
     summary = []
-    log("\n--- 统一配对检验（n=%d；a=full, b=对照臂；p_gt 检验 a>b，p_lt 检验 a<b）---" % len(seeds))
+    log("\n--- Unified paired test (n=%d; a=full, b=control arm; p_gt tests a>b, p_lt tests a<b)---" % len(seeds))
     for sc, tag, metric in comparisons:
         other = tag.split("vs_", 1)[1]
         a_vals = block(sc, "full", metric)
@@ -217,8 +217,8 @@ def main():
             w = csv.DictWriter(f, fieldnames=list(summary[0].keys()))
             w.writeheader()
             w.writerows(summary)
-        log(f"[2/2] 汇总 -> {SUMMARY_OUT}")
-        log(f"=== 完成 ({(time.time()-t0)/60:.1f} min) ===")
+        log(f"[2/2] Summary -> {SUMMARY_OUT}")
+        log(f"=== Done ({(time.time()-t0)/60:.1f} min) ===")
 
 
 if __name__ == "__main__":

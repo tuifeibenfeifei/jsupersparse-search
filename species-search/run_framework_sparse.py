@@ -8,9 +8,9 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""run_framework_sparse.py — v2 在线稀疏化导向实验
-验证目标：参数越多越强（19 参数稀疏化后 ≥ 2 参数）
-用法：
+"""run_framework_sparse.py — v2 online sparsified-guidance experiment
+Validation goal: more parameters are better (19 parameters after sparsification >= 2 parameters)
+Usage:
   python run_framework_sparse.py <oracle_path> <species_tag> [params2,params19]
 """
 import csv
@@ -48,7 +48,7 @@ BASE_CONFIG = dict(
     cov_in_state=True,
     recalc_every=20,
     stage2_topk=8,
-    # ---- v2 稀疏化导向 ----
+    # ---- v2 sparsified guidance ----
     sparse_guidance=True,
     sparse_topk=6,
     sparse_min_pos=5,
@@ -57,7 +57,7 @@ BASE_CONFIG = dict(
 COV_GROUPS = {
     "params2": [0, 11],                       # bio1 + bio12
     "params5": [0, 3, 4, 5, 11],              # bio1,bio4,bio5,bio6,bio12
-    "params19": list(range(19)),              # 全部 BIO
+    "params19": list(range(19)),              # all BIO
 }
 SEEDS = list(range(101, 121))
 N_REPEATS = len(SEEDS)
@@ -73,7 +73,7 @@ def main():
     clusters = CLUSTERS.get(species, CLUSTERS["black_muntjac"])
 
     oracle = SpeciesOracle(oracle_path)
-    print(f"[oracle] {oracle.nrows}x{oracle.ncols} = {oracle.total_cells} 网格, "
+    print(f"[oracle] {oracle.nrows}x{oracle.ncols} = {oracle.total_cells} grid, "
           f"presence={int(oracle.presence.sum())} ({oracle.presence.mean()*100:.2f}%)")
     print(f"[v2-sparse] species={species} sparse_topk=6 min_pos=5\n")
 
@@ -113,10 +113,10 @@ def main():
         avg_f, avg_q = found_sum / n, q_sum / n
         avg_area, cross_rate = area_sum / n, cross_sum / n
         summary.append([name, avg_f, avg_q, avg_area, cross_rate])
-        print(f"[{name}] 平均点数 {avg_f:.1f}/20 | 平均查询 {avg_q:.0f} | "
-              f"覆盖面积 {avg_area:.0f} 网格 | 双集群覆盖率 {cross_rate:.0%}")
+        print(f"[{name}] mean points {avg_f:.1f}/20 | mean queries {avg_q:.0f} | "
+              f"covered area {avg_area:.0f} cells | dual-cluster coverage {cross_rate:.0%}")
         for r in rows[:5]:
-            print(f"    seed {r[0]}: {r[1]}/20 点, {r[2]} 查询, 覆盖{r[4]}网格, 跨集群{r[5]}")
+            print(f"    seed {r[0]}: {r[1]}/20 pts, {r[2]} queries, covered {r[4]} cells, cross-cluster {r[5]}")
         with open(OUT_DIR / f"framework_species_sparse_{species}_{name}.csv", "w",
                   newline="", encoding="utf-8") as f:
             w = csv.writer(f)
@@ -135,7 +135,7 @@ def main():
         w = csv.writer(f)
         w.writerow(["algo", "seed", "query", "points", "stage"])
         w.writerows(conv_rows)
-    print("\n[done] v2-sparse 结果已保存 ->", OUT_DIR)
+    print("\n[done] v2-sparse results saved ->", OUT_DIR)
     return 0
 
 

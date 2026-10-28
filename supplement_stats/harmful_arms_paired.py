@@ -6,12 +6,12 @@ for _ in range(8):
     if (REPO_ROOT / 'configs').is_dir():
         break
     REPO_ROOT = REPO_ROOT.parent
-"""TABLE XV 四个"有害臂"的配对检验确认。
+"""TABLE XV paired test confirmation of four "harmful arms".
 
-H1 guidance @ Clouded leopard（full vs AUC_off）、H2 multicluster @ Chlorophyll（full vs multicluster_off）、
-H3 multicluster @ 3-D hypoxic（O3D5 vs O3D6/O3D7）、H4 framework vs greedy/hill_climb @ Chlorophyll，各 20 配对。
-统计口径与手稿 TABLE XI 一致：单尾 Wilcoxon 符号秩检验 + Cliff's delta。
-输出 supplement_stats/harmful_arms_paired.csv + 控制台汇总。
+H1 guidance @ Clouded leopard(full vs AUC_off),H2 multicluster @ Chlorophyll(full vs multicluster_off),
+H3 multicluster @ 3-D hypoxic (O3D5 vs O3D6/O3D7), H4 framework vs greedy/hill_climb @ Chlorophyll, 20 pairs each.
+Statistics consistent with manuscript TABLE XI: one-tailed Wilcoxon signed-rank test + Cliff's delta.
+Outputs supplement_stats/harmful_arms_paired.csv + console summary.
 """
 import csv
 import math
@@ -33,7 +33,7 @@ from oracle import SpeciesOracle  # noqa: E402
 OUT = HERE / "harmful_arms_paired.csv"
 LOG = HERE / "harmful_arms_paired.log"
 
-SEEDS = list(range(101, 121))   # 20 seeds（与 ablation_cross 一致）
+SEEDS = list(range(101, 121))   # 20 seeds (consistent with ablation_cross)
 TARGET = 20
 MAX_Q = 4000
 MIN_D = 1.0
@@ -53,8 +53,8 @@ def load_csv(p):
 
 
 def wilcox_onesided(a, b, direction):
-    """direction: 'a_better' 检验 a 显著优于 b（a-b>0 单尾）；
-    'b_better' 检验 b 显著优于 a（a-b<0 单尾）。返回 p 值。"""
+    """direction: 'a_better' tests whether a is significantly better than b (a-b>0 one-tailed);
+    'b_better' tests whether b is significantly better than a (a-b<0 one-tailed). Returns p value."""
     d = np.asarray(a, float) - np.asarray(b, float)
     if direction == "a_better":
         return stats.wilcoxon(d, zero_method="wilcox", alternative="greater").pvalue
@@ -74,7 +74,7 @@ def cliff_delta(a, b):
 
 
 def paired_stats(tag, scene, metric, a, b, direction, claim):
-    """a = 对照/关闭/基线臂；b = 全框架臂。direction 指定支持"有害"主张的显著性方向。"""
+    """a = control/off/baseline arm; b = full framework arm. direction specifies the significance direction supporting the "harmful" claim."""
     a = [float(x) for x in a]; b = [float(x) for x in b]
     n = min(len(a), len(b))
     a, b = a[:n], b[:n]
@@ -91,7 +91,7 @@ def paired_stats(tag, scene, metric, a, b, direction, claim):
     return row
 
 
-# 叶绿素基线（补跑 H4）
+# Chlorophyll baselines (rerun for H4)
 
 class Env:
     def __init__(self, oracle):
@@ -189,7 +189,7 @@ class Proxy:
 
 
 def algo_greedy(env, rng, ctx):
-    """全局贪心：每步选代理分最高的未访问格（复用于 H4 对照）。"""
+    """Global greedy: at each step pick the unvisited cell with the highest proxy score (reused for H4 control)."""
     o = env.o
     pr = Proxy(ctx)
     while not env.done:
@@ -249,12 +249,12 @@ def run_baseline(oracle, algo, seeds):
     return rows
 
 
-# 主流程
+# Main flow
 
 def main():
     if LOG.exists():
         LOG.unlink()
-    log("=== 4 个有害臂配对检验 ===")
+    log("=== 4 harmful arms paired test ===")
 
     ablation = load_csv(ROOT / "results" / "ablation_cross" / "ablation_detail.csv")
     o3d5 = load_csv(ROOT / "results" / "ocean3d" / "regress_opt_F" / "framework_opt_o3d_O3D5_params7.csv")
@@ -266,7 +266,7 @@ def main():
     def pick(sc, var):
         return [r for r in ablation if r["scenario"] == sc and r["variant"] == var]
 
-    # H1: clouded_leopard full vs AUC_off（关闭密度引导整链）
+    # H1: clouded_leopard full vs AUC_off (disable the entire density guidance chain)
     full_cl = pick("clouded_leopard", "full")
     off_cl = pick("clouded_leopard", "AUC_off")
     by_seed = {int(r["algo_seed"]): r for r in full_cl}
@@ -274,15 +274,15 @@ def main():
     b_pts = [r["points_found"] for r in off_cl]
     a_q = [by_seed[int(r["algo_seed"])]["total_queries"] for r in off_cl]
     b_q = [r["total_queries"] for r in off_cl]
-    # 有害方向：关闭后命中提升（AUC_off > full on points）
+    # Harmful direction: disabling improves hits (AUC_off > full on points)
     out_rows.append(paired_stats("H1_density_guidance", "clouded_leopard", "points",
                                  a_pts, b_pts, "b_better",
                                  "harmful: disabling improves hits"))
     out_rows.append(paired_stats("H1_density_guidance", "clouded_leopard", "queries",
                                  a_q, b_q, "a_better",
-                                 "queries: off 更省查询为有害方向"))
+                                 "queries: off saves more queries is the harmful direction"))
 
-    # H2: chlorophyll full vs multicluster_off（关闭多簇后查询大减）
+    # H2: chlorophyll full vs multicluster_off (queries drop sharply after disabling multicluster)
     full_ch = pick("chlorophyll", "full")
     off_ch = pick("chlorophyll", "multicluster_off")
     by_seed = {int(r["algo_seed"]): r for r in full_ch}
@@ -292,12 +292,12 @@ def main():
     b_q = [r["total_queries"] for r in off_ch]
     out_rows.append(paired_stats("H2_multicluster", "chlorophyll", "points",
                                  a_pts, b_pts, "b_better",
-                                 "harmful if off pts >= full（关闭不损失命中）"))
+                                 "harmful if off pts >= full (disabling loses no hits)"))
     out_rows.append(paired_stats("H2_multicluster", "chlorophyll", "queries",
                                  a_q, b_q, "a_better",
-                                 "harmful: full 显著更耗查询"))
+                                 "harmful: full is significantly more query-expensive"))
 
-    # H3: 3-D hypoxic 多簇（O3D5 关 vs O3D6/O3D7 开）
+    # H3: 3-D hypoxic multicluster (O3D5 off vs O3D6/O3D7 on)
     for other, tag in [(o3d6, "O3D6"), (o3d7, "O3D7")]:
         by_seed = {int(r["seed"]): r for r in o3d5}
         a_pts = [by_seed[int(r["seed"])]["points_found"] for r in other]
@@ -309,9 +309,9 @@ def main():
                                      "harmful if O3D5(off) pts >= cluster arm"))
         out_rows.append(paired_stats(f"H3_multicluster_vs_{tag}", "o3d", "queries",
                                      a_q, b_q, "b_better",
-                                     "harmful if cluster arm 更耗查询"))
+                                     "harmful if cluster arm is more query-expensive"))
 
-    # H4: chlorophyll full vs greedy / hill_climb（补跑基线）
+    # H4: chlorophyll full vs greedy / hill_climb (rerun baselines)
     by_seed_ch = {int(r["algo_seed"]): r for r in pick("chlorophyll", "full")}
     oracle = SpeciesOracle(ROOT / "chlorophyll-search" / "data" / "oracle.npz")
     for algo, tag in [(algo_greedy, "greedy"), (algo_hill_climb, "hill_climb")]:
@@ -326,8 +326,8 @@ def main():
                                      "harmful if baseline pts >= framework"))
         out_rows.append(paired_stats(f"H4_framework_vs_{tag}", "chlorophyll", "queries",
                                      a_q, b_q, "b_better",
-                                     "harmful: framework 显著更耗查询"))
-        # 保存基线明细
+                                     "harmful: framework is significantly more query-expensive"))
+        # Save baseline detail
         with open(HERE / f"baseline_chl_{tag}_detail.csv", "w", encoding="utf-8",
                   newline="") as f:
             w = csv.writer(f)
@@ -341,8 +341,8 @@ def main():
         w = csv.DictWriter(f, fieldnames=list(out_rows[0].keys()))
         w.writeheader()
         w.writerows(out_rows)
-    log(f"[done] 输出 -> {OUT} ({len(out_rows)} 行)")
-    log(f"[done] 基线明细 -> supplement_stats/baseline_chl_*.csv")
+    log(f"[done] Output -> {OUT} ({len(out_rows)} rows)")
+    log(f"[done] Baseline detail -> supplement_stats/baseline_chl_*.csv")
 
 
 if __name__ == "__main__":

@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-"""2x2 分解矩阵实验：selector(on/off) × scheduler(greedy/smart)，四场景。
+"""2x2 factorial matrix experiment: selector(on/off) x scheduler(greedy/smart), four scenarios.
 
-selector on = sparse_guidance=True；off = sparse_guidance=False（密度引导保留）；
-scheduler smart = 分阶段+Q-learning+远跳框架；greedy = 每步选全局最优未访问格。
-输出 peerj_2x2_detail.csv / peerj_2x2_matrix.md / peerj_2x2_matrix.log。
+selector on = sparse_guidance=True; off = sparse_guidance=False (density guidance retained);
+scheduler smart = staged + Q-learning + long jump framework; greedy = pick the globally best unvisited cell each step.
+Outputs peerj_2x2_detail.csv / peerj_2x2_matrix.md / peerj_2x2_matrix.log.
 """
 import csv
 import math
@@ -35,7 +35,7 @@ LOG = HERE / "peerj_2x2_matrix.log"
 SEEDS = list(range(101, 121))  # 20 algo seeds
 MC_WORLDS_FULL = list(range(1, 21))
 
-# 配置（与 run_cross_ablation.py / run_o3d_regress_F.py 逐字一致）
+# Config (verbatim identical to run_cross_ablation.py / run_o3d_regress_F.py)
 MC_CFG = dict(
     target_points=40, max_queries=10000, min_dist_cells=2.0,
     stage2_min=3, stage3_min=5, stage3_jump_interval=30,
@@ -47,7 +47,7 @@ MC_CFG = dict(
     time_decay=True, decay_mode="exp", decay_tau=300.0,
     mutation_detect=True, mutation_streak_thresh=40,
     follow_mode=True, mutation_disperse_jump=True, mutation_jump_interval=15,
-    # 以下键在 MC_CFG 原文件中缺省；为开 selector(on-smart) 补全为与 CHL/SPP 同口径
+    # The following keys are absent in the original MC_CFG file; added to enable selector(on-smart) on par with CHL/SPP
     learning_rate=0.1, discount_factor=0.95,
     epsilon_start=0.9, epsilon_end=0.1, epsilon_decay=0.999,
     stage1_grid_step=2, recalc_every=20, stage2_topk=8,
@@ -104,7 +104,7 @@ ORACLE_PATHS = {
     "clouded_leopard": ROOT / "species-search" / "data" / "clouded_leopard" / "oracle.npz",
 }
 
-# 日志
+# logging
 def log(msg):
     line = f"[{datetime.now().strftime('%H:%M:%S')}] {msg}"
     print(line, flush=True)
@@ -117,10 +117,10 @@ def load_csv(p):
         return list(csv.DictReader(f))
 
 
-#  贪心臂实现（2D + 3D；协变量代理 + 空间纯贪心）
+#  Greedy arm implementation (2D + 3D; covariate proxy + spatial pure greedy)
 
 class Env2D:
-    """与 harmful_arms_paired.Env 逐字一致的 2D 交互环境。"""
+    """2D interaction environment verbatim identical to harmful_arms_paired.Env."""
     def __init__(self, oracle, target, max_q, min_d):
         self.o = oracle
         self.target = target
@@ -132,7 +132,7 @@ class Env2D:
         self.o.reset_counter()
         self.found = []          # [(i,j)]
         self.visited = set()
-        self.pos_cov = []        # 每个新发现点的原始 cov 向量
+        self.pos_cov = []        # raw cov vector for each newly discovered point
         self.X_hist = []
         self.y_hist = []
 
@@ -166,7 +166,7 @@ class Env2D:
 
 
 class Ctx2D:
-    """预计算归一化协变量场 + 每维 min/max（与 harmful_arms.EpisodeCtx 一致）。"""
+    """Precompute normalized covariate field + per-dim min/max (consistent with harmful_arms.EpisodeCtx)."""
     def __init__(self, oracle, struct):
         self.o = oracle
         self.struct = list(struct)
@@ -202,7 +202,7 @@ def proxy_cov_map(Xgrid, pos_cov_norm):
 
 
 def proxy_spatial_map_2d(H, W, found):
-    """每格到最近已发现点的负欧氏距离；无发现点时全 0（退化为 raster 顺序）。"""
+    """Negative Euclidean distance from each cell to the nearest discovered point; all 0 when no points found (degrades to raster order)."""
     if not found:
         return np.zeros((H, W), dtype=np.float32)
     ii, jj = np.meshgrid(np.arange(H), np.arange(W), indexing="ij")
@@ -215,8 +215,8 @@ def proxy_spatial_map_2d(H, W, found):
 
 
 class GreedyRunner2D:
-    """通用 2D 贪心执行器：proxy 类型 = 'cov' 或 'spatial'。
-    性能优化：score map 变化时才重排；缓存排序索引，步进 past visited。"""
+    """Generic 2D greedy runner: proxy type = 'cov' or 'spatial'.
+    Performance optimization: re-sort only when the score map changes; cache sorted indices and step past visited cells."""
     def __init__(self, oracle, target, max_q, min_d, struct, proxy_type):
         self.env = Env2D(oracle, target, max_q, min_d)
         self.ctx = Ctx2D(oracle, struct) if proxy_type == "cov" else None
@@ -359,7 +359,7 @@ def proxy_spatial_map_3d(K, L, J, found):
 
 
 class GreedyRunner3D:
-    """3D 贪心执行器：同 2D 优化（缓存排序索引，仅在 score map 变化时重排）。"""
+    """3D greedy runner: same optimization as 2D (cache sorted indices, re-sort only when score map changes)."""
     def __init__(self, oracle, target, max_q, min_d, struct, proxy_type):
         self.env = Env3D(oracle, target, max_q, min_d)
         self.ctx = Ctx3D(oracle, struct) if proxy_type == "cov" else None
@@ -411,7 +411,7 @@ class GreedyRunner3D:
         return env.result()
 
 
-#  既有数据加载
+#  Existing data loading
 
 def load_ablation():
     return load_csv(ROOT / "results" / "ablation_cross" / "ablation_detail.csv")
@@ -427,8 +427,8 @@ def load_o3d5():
 
 
 def collect_reused_rows():
-    """返回 list[dict]，列：scenario, cell, arm, world_seed, algo_seed,
-    points_found, total_queries, covered_cells, source。"""
+    """Return list[dict], columns: scenario, cell, arm, world_seed, algo_seed,
+    points_found, total_queries, covered_cells, source."""
     rows = []
     abl = load_ablation()
     sco = load_screen_off()
@@ -466,8 +466,8 @@ def collect_reused_rows():
             add("clouded_leopard", "sel_off_smart", "smart", r["world_seed"], r["algo_seed"],
                 r["points_found"], r["total_queries"], -1, "screen_off_arms.csv")
 
-    # minecraft: off-smart=MC full（MC_CFG 无 sparse_guidance=默认 False=selector off）
-    #           ref AUC_off 保留
+    # minecraft: off-smart=MC full (MC_CFG has no sparse_guidance=default False=selector off)
+    #           ref AUC_off retained
     for r in abl:
         if r["scenario"] == "minecraft" and r["variant"] == "full":
             add("minecraft", "sel_off_smart", "smart", r["world_seed"], r["algo_seed"],
@@ -476,7 +476,7 @@ def collect_reused_rows():
             add("minecraft", "ref_AUC_off", "smart_ref", r["world_seed"], r["algo_seed"],
                 r["points_found"], r["total_queries"], -1, "ablation_detail.csv:AUC_off")
 
-    # ocean3d: off-smart=O3D5_params7（sparse_guidance=False, guidance_on=True, covs=7）
+    # ocean3d: off-smart=O3D5_params7(sparse_guidance=False, guidance_on=True, covs=7)
     for r in o3d5:
         add("ocean3d", "sel_off_smart", "smart", 0, r["seed"],
             r["points_found"], r["total_queries"], r["covered_cells"],
@@ -485,10 +485,10 @@ def collect_reused_rows():
     return rows
 
 
-#  新跑：smart 臂（MC on-smart, O3D on-smart）
+#  New runs: smart arms (MC on-smart, O3D on-smart)
 
 def run_mc_on_smart(world_seeds, algo_seeds):
-    """MC_CFG + sparse_guidance=True（selector on, smart scheduler）。"""
+    """MC_CFG + sparse_guidance=True(selector on, smart scheduler)."""
     cfg = dict(MC_CFG, sparse_guidance=True)
     rows = []
     for ws in world_seeds:
@@ -504,7 +504,7 @@ def run_mc_on_smart(world_seeds, algo_seeds):
 
 
 def run_o3d_on_smart(oracle, algo_seeds):
-    """O3D_BASE + sparse_guidance=True（selector on, smart scheduler）。"""
+    """O3D_BASE + sparse_guidance=True(selector on, smart scheduler)."""
     cfg = dict(O3D_BASE, sparse_guidance=True)
     rows = []
     for ag in algo_seeds:
@@ -516,7 +516,7 @@ def run_o3d_on_smart(oracle, algo_seeds):
     return rows
 
 
-#  主流程
+#  Main flow
 
 def main():
     t_all = time.time()
@@ -525,12 +525,12 @@ def main():
     log("=== peerj_2x2_matrix: selector(on/off) x scheduler(greedy/smart) ===")
 
     detail_rows = collect_reused_rows()
-    log(f"[reuse] 既有 smart 臂行数 = {len(detail_rows)}")
+    log(f"[reuse] existing smart arm rows = {len(detail_rows)}")
 
-    # 1. 贪心臂：chlorophyll
-    # sel_on_greedy（协变量代理）：直接复用 baseline_chl_greedy_detail.csv（20 seeds 恒=66，
-    # 为 C1 数字对账硬锚；当前 numpy 2.0.2 的 argsort tie-break 与生成 CSV 时不同，
-    # 重跑会得到 1258，故读既有 CSV 以保住锚点）。
+    # 1. greedy arms: chlorophyll
+    # sel_on_greedy (covariate proxy): directly reuse baseline_chl_greedy_detail.csv (20 seeds always=66,
+    # a hard anchor for C1 numerical reconciliation; current numpy 2.0.2 argsort tie-break differs from when the CSV was generated,
+    # rerunning would yield 1258, so read the existing CSV to preserve the anchor).
     log("--- [1] chlorophyll greedy arms (20 seeds) ---")
     chl_oracle = SpeciesOracle(ORACLE_PATHS["chlorophyll"])
     chl_greedy_rows = load_csv(HERE / "baseline_chl_greedy_detail.csv")
@@ -543,7 +543,7 @@ def main():
                                 source="baseline_chl_greedy_detail.csv"))
     log(f"    chlorophyll sel_on_greedy reused n={len(chl_greedy_rows)} "
         f"(all q=66: {all(int(r['total_queries'])==66 for r in chl_greedy_rows)})")
-    # sel_off_greedy（空间纯贪心）：新跑
+    # sel_off_greedy (spatial pure greedy): new run
     t0 = time.time()
     runner = GreedyRunner2D(chl_oracle, target=20, max_q=4000, min_d=1.0,
                             struct=list(range(7)), proxy_type="spatial")
@@ -557,7 +557,7 @@ def main():
                                 source="peerj_2x2_matrix.py:spatial"))
     log(f"    chlorophyll sel_off_greedy done ({time.time()-t0:.1f}s)")
 
-    # 2. 贪心臂：clouded_leopard
+    # 2. greedy arms: clouded_leopard
     log("--- [2] clouded_leopard greedy arms (20 seeds) ---")
     cl_oracle = SpeciesOracle(ORACLE_PATHS["clouded_leopard"])
     for ptype, cell in [("cov", "sel_on_greedy"), ("spatial", "sel_off_greedy")]:
@@ -574,9 +574,9 @@ def main():
                                     source=f"peerj_2x2_matrix.py:{ptype}"))
         log(f"    clouded_leopard {cell:16s} done ({time.time()-t0:.1f}s)")
 
-    # 3. minecraft：on-smart 新跑 + 两个 greedy
-    # 先探针 5 runs 估时
-    log("--- [3a] minecraft on-smart 探针 (1 world x 5 seeds) ---")
+    # 3. minecraft: on-smart new run + two greedy
+    # first probe 5 runs to estimate time
+    log("--- [3a] minecraft on-smart probe (1 world x 5 seeds) ---")
     probe_ws = 1
     probe_n = 5
     t0 = time.time()
@@ -587,13 +587,13 @@ def main():
 
     if probe_dt > 5.0:
         mc_worlds = list(range(1, 11))
-        log(f"    !! MC on-smart >5s/run -> 降为 10 worlds x 20 seeds = 200 runs")
+        log(f"    !! MC on-smart >5s/run -> downgrade to 10 worlds x 20 seeds = 200 runs")
     else:
         mc_worlds = MC_WORLDS_FULL
     mc_n_runs = len(mc_worlds) * len(SEEDS)
     log(f"    MC on-smart full: {len(mc_worlds)} worlds x {len(SEEDS)} seeds = {mc_n_runs} runs")
 
-    # 探针那 5 个 run 直接进明细（避免重跑）
+    # the 5 probe runs go directly into detail (avoid rerunning)
     for r in probe_rows:
         detail_rows.append(dict(scenario="minecraft", cell="sel_on_smart", arm="smart",
                                 world_seed=r["world_seed"], algo_seed=r["algo_seed"],
@@ -601,7 +601,7 @@ def main():
                                 total_queries=r["total_queries"],
                                 covered_cells=r["covered_cells"],
                                 source="peerj_2x2_matrix.py:MC_CFG+sparse=True"))
-    # 剩余 world 1 的 seeds 106..120
+    # remaining world 1 seeds 106..120
     t0 = time.time()
     extra = run_mc_on_smart([1], SEEDS[probe_n:])
     for r in extra:
@@ -612,7 +612,7 @@ def main():
                                 covered_cells=r["covered_cells"],
                                 source="peerj_2x2_matrix.py:MC_CFG+sparse=True"))
     log(f"    MC on-smart world1 remaining {len(extra)} seeds ({time.time()-t0:.1f}s)")
-    # 其余 worlds
+    # remaining worlds
     for ws in mc_worlds:
         if ws == 1:
             continue
@@ -627,7 +627,7 @@ def main():
                                     source="peerj_2x2_matrix.py:MC_CFG+sparse=True"))
         log(f"    MC on-smart world={ws} done ({time.time()-t0:.1f}s)")
 
-    # MC greedy 臂
+    # MC greedy arms
     log("--- [3b] minecraft greedy arms ---")
     for ptype, cell in [("cov", "sel_on_greedy"), ("spatial", "sel_off_greedy")]:
         t0 = time.time()
@@ -648,7 +648,7 @@ def main():
                 n_done += 1
         log(f"    MC {cell:16s} done n={n_done} ({time.time()-t0:.1f}s)")
 
-    # 4. ocean3d：on-smart 新跑 + 两个 greedy
+    # 4. ocean3d: on-smart new run + two greedy
     log("--- [4] ocean3d arms ---")
     o3d_oracle = Oracle3D(ROOT / "ocean3d-search" / "data" / "oracle3d.npz")
     t0 = time.time()
@@ -676,7 +676,7 @@ def main():
                                     source=f"peerj_2x2_matrix.py:{ptype}"))
         log(f"    ocean3d {cell:16s} done ({time.time()-t0:.1f}s)")
 
-    # 写明细 CSV
+    # write detail CSV
     fieldnames = ["scenario", "cell", "arm", "world_seed", "algo_seed",
                   "points_found", "total_queries", "covered_cells", "source"]
     with open(DETAIL_CSV, "w", newline="", encoding="utf-8") as f:
@@ -685,7 +685,7 @@ def main():
         w.writerows(detail_rows)
     log(f"[detail] -> {DETAIL_CSV} ({len(detail_rows)} rows)")
 
-    # 自检锚点
+    # self-check anchors
     log("--- self-check anchors ---")
     chl_on_g = [r for r in detail_rows if r["scenario"] == "chlorophyll"
                 and r["cell"] == "sel_on_greedy"]

@@ -1,5 +1,5 @@
-[15:10:21] === PeerJ 端到端墙钟成本对照 ===
-[15:10:21] [1/4] chlorophyll 三方法实测 20 seeds ...
+[15:10:21] === PeerJ end-to-end wall-clock cost comparison ===
+[15:10:21] [1/4] chlorophyll three methods measured over 20 seeds ...
 [15:10:23]   chl/framework seed=101 pts=20 q=1301 wall=1.662s
 [15:10:25]   chl/framework seed=102 pts=20 q=1292 wall=1.639s
 [15:10:27]   chl/framework seed=103 pts=20 q=1602 wall=2.189s
@@ -60,16 +60,16 @@
 [15:12:01]   chl/turbo seed=118 pts=20 q=95 wall=0.127s
 [15:12:02]   chl/turbo seed=119 pts=20 q=170 wall=0.695s
 [15:12:22]   chl/turbo seed=120 pts=20 q=1125 wall=20.657s
-[15:12:22] [2/4] minecraft framework 读既有 CSV ...
-[15:12:22]   mc/framework 读既有 CSV 400 runs
-[15:12:22] [3/4] minecraft GP-UCB/TuRBO 实测 10 worlds x 20 seeds ...
+[15:12:22] [2/4] minecraft framework reading existing CSV ...
+[15:12:22]   mc/framework reading existing CSV 400 runs
+[15:12:22] [3/4] minecraft GP-UCB/TuRBO measured over 10 worlds x 20 seeds ...
 [15:13:12]   mc agents world_seed=1 done (+40 rows)
 [15:13:45]   mc agents world_seed=2 done (+40 rows)
 [15:22:07]   mc agents world_seed=3 done (+40 rows)
 [15:22:10]   mc agents world_seed=4 done (+40 rows)
 [15:22:14]   mc agents world_seed=5 done (+40 rows)
 [15:25:03]   mc agents world_seed=6 done (+40 rows)
-[15:26:16] [resume] 已完成 MC agent worlds: [1, 2, 3, 4, 5, 6]
+[15:26:16] [resume] completed MC agent worlds: [1, 2, 3, 4, 5, 6]
 [15:27:01]     [watchdog gp_ucb] q=2673
 [15:27:47]     [watchdog turbo] q=1029
 [15:28:32]     [watchdog gp_ucb] q=4373
@@ -83,7 +83,7 @@
 [15:34:33]     [watchdog gp_ucb] q=4553
 [15:35:18]     [watchdog turbo] q=2653
 [15:36:04]     [watchdog gp_ucb] q=4933
-[15:36:55] [resume] 已完成 MC agent worlds: [1, 2, 3, 4, 5, 6]
+[15:36:55] [resume] completed MC agent worlds: [1, 2, 3, 4, 5, 6]
 [15:37:15]     [watchdog gp_ucb] q=2193
 [15:37:35]     [watchdog turbo] q=1453
 [15:37:55]     [watchdog gp_ucb] q=2813
@@ -178,4 +178,4 @@
 [16:11:58]     [watchdog turbo] q=621
 [16:12:36]     [watchdog turbo] q=501
 [16:12:36]   mc agents world_seed=10 done (+40 rows)
-[16:12:36] [resume] 完成
+[16:12:36] [resume] done

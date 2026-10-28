@@ -6,12 +6,12 @@ for _ in range(8):
     if (REPO_ROOT / 'configs').is_dir():
         break
     REPO_ROOT = REPO_ROOT.parent
-"""held-out 种子块验证（SEEDS=201-220，与调参/评估块 101-120 分离）。
+"""held-out seed block validation (SEEDS=201-220, separate from tuning/evaluation block 101-120).
 
-场景×variant：clouded_leopard / chlorophyll × {full, AUC_off, multicluster_off}；
-chlorophyll 基线重跑 greedy/hill_climb（复用 harmful_arms Env/Proxy）。
-输出 ablation_detail_heldout.csv / heldout_chl_baselines.csv / heldout_summary.csv。
-统计口径与手稿 TABLE XI 一致：单尾 Wilcoxon + Cliff's delta。
+Scenario x variant: clouded_leopard / chlorophyll x {full, AUC_off, multicluster_off};
+chlorophyll baselines rerun greedy/hill_climb (reusing harmful_arms Env/Proxy).
+Outputs ablation_detail_heldout.csv / heldout_chl_baselines.csv / heldout_summary.csv.
+Statistics consistent with manuscript TABLE XI: one-tailed Wilcoxon + Cliff's delta.
 """
 import argparse
 import csv
@@ -42,10 +42,10 @@ CHL_BASE_OUT = HERE / "heldout_chl_baselines.csv"
 SUMMARY_OUT = HERE / "heldout_summary.csv"
 LOG = HERE / "heldout_seeds.log"
 
-SEEDS = list(range(201, 221))        # held-out 块（20 种子）
-TUNED = list(range(101, 121))        # 调参/评估块（对照用）
+SEEDS = list(range(201, 221))        # held-out block (20 seeds)
+TUNED = list(range(101, 121))        # tuning/evaluation block (for control)
 
-# 与 run_cross_ablation.py 完全相同的配置
+# Config identical to run_cross_ablation.py
 SPP_CFG = dict(
     target_points=20, max_queries=20000, min_dist_cells=1.0,
     stage2_min=3, stage3_min=5, stage3_jump_interval=30,
@@ -126,7 +126,7 @@ def paired(a, b, direction):
                 wilcox_p=round(p, 4), cliff_delta=round(cliff_delta(a, b), 4))
 
 
-# 叶绿素基线（复用 harmful_arms 的 Env/Proxy/algo 逻辑）
+# Chlorophyll baselines (reusing harmful_arms Env/Proxy/algo logic)
 class Env:
     def __init__(self, oracle):
         self.o = oracle
@@ -283,14 +283,14 @@ def main():
     if LOG.exists():
         LOG.unlink()
     args = argparse.ArgumentParser()
-    args.add_argument("--smoke", type=int, default=0, help="每单元先跑 N 种子试跑")
+    args.add_argument("--smoke", type=int, default=0, help="trial run N seeds per unit first")
     a = args.parse_args()
     smoke = a.smoke
     seeds = SEEDS[:smoke] if smoke else SEEDS
 
-    log(f"=== held-out 种子块验证 (seeds {seeds[0]}-{seeds[-1]}, n={len(seeds)}) ===")
+    log(f"=== held-out seed block validation (seeds {seeds[0]}-{seeds[-1]}, n={len(seeds)}) ===")
 
-    # 1) 框架三配置（clouded_leopard / chlorophyll）
+    # 1) Framework three configs (clouded_leopard / chlorophyll)
     all_rows = []
     t0 = time.time()
     for sc in ["clouded_leopard", "chlorophyll"]:
@@ -313,9 +313,9 @@ def main():
         w.writerow(["scenario", "variant", "world_seed", "algo_seed",
                     "points_found", "total_queries"])
         w.writerows(all_rows)
-    log(f"[1/3] 框架三配置 -> {HELDOUT_DETAIL} ({(time.time()-t0)/60:.1f} min)")
+    log(f"[1/3] Framework three configs -> {HELDOUT_DETAIL} ({(time.time()-t0)/60:.1f} min)")
 
-    # 2) 叶绿素 greedy / hill_climb 基线（held-out 种子块）
+    # 2) Chlorophyll greedy / hill_climb baselines (held-out seed block)
     oracle = SpeciesOracle(CHL_ORACLE)
     base_rows = []
     for algo, tag in [(algo_greedy, "greedy"), (algo_hill_climb, "hill_climb")]:
@@ -326,14 +326,14 @@ def main():
         w = csv.writer(f)
         w.writerow(["algo", "seed", "points_found", "total_queries", "covered_cells"])
         w.writerows(base_rows)
-    log(f"[2/3] 叶绿素基线 -> {CHL_BASE_OUT}")
+    log(f"[2/3] Chlorophyll baselines -> {CHL_BASE_OUT}")
 
-    # 3) 汇总 + 配对检验
+    # 3) Summary + paired test
     det = {sc: {} for sc in ["clouded_leopard", "chlorophyll"]}
     for r in all_rows:
         det[r[0]].setdefault(r[1], []).append(r)
 
-    # 调参块对照（读原 ablation_detail.csv）
+    # Tuning block control (read original ablation_detail.csv)
     tuned = {sc: {v: [] for v, _ in VARIANTS} for sc in ["clouded_leopard", "chlorophyll"]}
     for r in load_csv(ABL / "ablation_detail.csv"):
         if r["scenario"] in tuned and r["variant"] in tuned[r["scenario"]]:
@@ -348,23 +348,23 @@ def main():
                 [float(x[5]) for x in rows])
 
     summary = []
-    log("\n--- 配对检验（held-out 块, n=%d）---" % len(seeds))
+    log("\n--- Paired test (held-out block, n=%d) ---" % len(seeds))
     for sc in ["clouded_leopard", "chlorophyll"]:
-        # (a) 有害臂方向（与 harmful_arms_paired.py 同口径：a=全框架, b=对照臂）
+        # (a) Harmful arm direction (same convention as harmful_arms_paired.py: a=full framework, b=control arm)
         full_p, full_q = blocks(sc, "full", det)
         auc_p, auc_q = blocks(sc, "AUC_off", det)
         mc_p, mc_q = blocks(sc, "multicluster_off", det)
         if sc == "clouded_leopard":
-            s1 = paired(full_p, auc_p, "b_better")    # 检验 full pts < AUC_off（关闭命中更高=有害）
+            s1 = paired(full_p, auc_p, "b_better")    # test full pts < AUC_off (off-hit higher = harmful)
             cmp_tag = "full_vs_AUC_off"
             summary.append(dict(block="heldout", scene=sc, comparison=cmp_tag,
                                 metric="points", **s1))
         else:
-            s1 = paired(full_q, mc_q, "a_better")     # 检验 full queries > multicluster_off（关闭更省=有害）
+            s1 = paired(full_q, mc_q, "a_better")     # test full queries > multicluster_off (off saves more = harmful)
             cmp_tag = "full_vs_multicluster_off"
             summary.append(dict(block="heldout", scene=sc, comparison=cmp_tag,
                                 metric="queries", **s1))
-        # 对照：调参块同口径
+        # Control: tuning block same convention
         t_full_p, t_full_q = blocks(sc, "full", tuned)
         t_auc_p, t_auc_q = blocks(sc, "AUC_off", tuned)
         t_mc_p, t_mc_q = blocks(sc, "multicluster_off", tuned)
@@ -381,14 +381,14 @@ def main():
         log(f"  [{sc}] heldout {cmp_tag} p={s1['wilcox_p']} d={s1['cliff_delta']} "
             f"| tuned {ts['wilcox_p']} d={ts['cliff_delta']}")
 
-    # (b) H4：chlorophyll 框架 vs greedy/hill（held-out 块）
+    # (b) H4: chlorophyll framework vs greedy/hill (held-out block)
     fr_full = {int(r[3]): float(r[5]) for r in all_rows
                if r[0] == "chlorophyll" and r[1] == "full"}
     for tag in ("greedy", "hill_climb"):
         bl = {int(x[1]): float(x[3]) for x in base_rows if x[0] == tag}
         a_q = [bl[s] for s in seeds]
         b_q = [fr_full[s] for s in seeds]
-        s = paired(a_q, b_q, "b_better")   # 基线查询更省=框架有害方向
+        s = paired(a_q, b_q, "b_better")   # baseline queries fewer = framework harmful direction
         summary.append(dict(block="heldout", scene="chlorophyll",
                             comparison=f"full_vs_{tag}", metric="queries", **s))
         log(f"  [chlorophyll] full vs {tag} heldout p={s['wilcox_p']} d={s['cliff_delta']}")
@@ -397,8 +397,8 @@ def main():
         w = csv.DictWriter(f, fieldnames=list(summary[0].keys()))
         w.writeheader()
         w.writerows(summary)
-    log(f"[3/3] 汇总 -> {SUMMARY_OUT}")
-    log(f"=== 完成 ({(time.time()-t0)/60:.1f} min, seeds={seeds[0]}-{seeds[-1]}) ===")
+    log(f"[3/3] Summary -> {SUMMARY_OUT}")
+    log(f"=== Done ({(time.time()-t0)/60:.1f} min, seeds={seeds[0]}-{seeds[-1]}) ===")
 
 
 if __name__ == "__main__":

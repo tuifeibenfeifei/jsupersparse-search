@@ -8,25 +8,25 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""mc_oracle.py — Minecraft 1.17 格网黑盒 oracle（供 baselines 用）。
+"""mc_oracle.py — Minecraft 1.17 grid black-box oracle (for baselines).
 
-游戏场景语义（论文用）：
-  - 玩家智能体在未知 Minecraft 世界里探索，目标是定位"海底神殿"（Ocean Monument）
-    的生成位置。海底神殿只生成在深海群系（deep_ocean / deep_lukewarm /
-    deep_cold / deep_frozen_ocean），因此 presence=1 即"该格为深海、具备神殿生成条件"。
-  - 协变量 = 该格的海洋温度噪声场（cubiomes getTemperatureNoise），它能精确区分
-    五种海洋变体（Spearman=1.0），但不直接告诉智能体"这里是不是深海"。
-  - 黑盒：智能体不知道世界种子对应的群系地图，只能逐格查询 presence + 读温度。
+Game scenario semantics (for paper):
+  - Player agent explores an unknown Minecraft world, goal is to locate the "Ocean Monument"
+    spawn location. Ocean Monuments only spawn in deep ocean biomes (deep_ocean / deep_lukewarm /
+    deep_cold / deep_frozen_ocean), so presence=1 means "this cell is deep ocean and meets monument spawn conditions".
+  - Covariate = the cell's ocean temperature noise field (cubiomes getTemperatureNoise), which can precisely distinguish
+    five ocean variants (Spearman=1.0), but does not directly tell the agent "whether this is deep ocean".
+  - Black box: the agent does not know the biome map corresponding to the world seed; it can only query presence cell by cell + read temperature.
 
-格网口径：
-  - nrows=ncols=100，单元格 (i,j) 对应 MC 世界方块坐标 x=(i-50)*16, z=(j-50)*16
-    （每格 = 1 个区块 = 16x16 方块，世界范围约 ±800 方块）。
-  - query_count 只计 presence（is_deep_ocean）调用，与框架预算口径对齐；
-    covariate（温度）查询不计费，因为 baseline 不使用温度引导。
+Grid specification:
+  - nrows=ncols=100; cell (i,j) corresponds to MC world block coordinates x=(i-50)*16, z=(j-50)*16
+    (each cell = 1 chunk = 16x16 blocks; world range ≈ ±800 blocks).
+  - query_count only counts presence (is_deep_ocean) calls, aligned with the framework budget metric;
+    covariate (temperature) queries are not billed, because baselines do not use temperature guidance.
 
-与框架 apples-to-apples：
-  - 框架 DeepSeaExplorer 内部直接调用同一个 cubiomes_wrapper（同 seed、同世界）。
-  - 本 oracle 只是把同一 cubiomes 黑盒包装成 baselines 通用的 query_cell(i,j) 接口。
+Apples-to-apples with the framework:
+  - The framework DeepSeaExplorer internally calls the same cubiomes_wrapper (same seed, same world).
+  - This oracle simply wraps the same cubiomes black box into the common baselines query_cell(i,j) interface.
 """
 import sys
 from pathlib import Path
@@ -41,8 +41,8 @@ class MCGridOracle:
     def __init__(self, world_seed: int = 1, n: int = 100):
         self.nrows = n
         self.ncols = n
-        self._w = 16  # 每格 16 方块（1 区块）
-        self._c = n // 2  # 中心偏移
+        self._w = 16  # 16 blocks per cell (1 chunk)
+        self._c = n // 2  # Center offset
         self._mc = CubiomesWrapper(seed=world_seed)
         self._world_seed = world_seed
         self.query_count = 0
@@ -59,13 +59,13 @@ class MCGridOracle:
         return (j - self._c) * self._w, (i - self._c) * self._w
 
     def query_cell(self, i: int, j: int):
-        """返回 (presence: bool, covariate: float)。越界返回 (None, None)。"""
+        """Returns (presence: bool, covariate: float). Out of bounds returns (None, None)."""
         if not (0 <= i < self.nrows and 0 <= j < self.ncols):
             return None, None
         x, z = self._cell_to_world(i, j)
         presence = bool(self._mc.is_deep_ocean(x, z))
         self.query_count += 1
-        cov = self._mc.get_temperature(x, z)  # 协变量，不计费
+        cov = self._mc.get_temperature(x, z)  # covariate, not billed
         return presence, cov
 
     @property
@@ -74,7 +74,7 @@ class MCGridOracle:
 
 
 if __name__ == "__main__":
-    # 快速自检：扫 5x5 格看 presence 分布
+    # Quick self-check: scan a 5x5 grid to see presence distribution
     o = MCGridOracle(world_seed=42, n=100)
     hits = 0
     for i in range(0, 100, 10):
@@ -82,4 +82,4 @@ if __name__ == "__main__":
             p, t = o.query_cell(i, j)
             if p:
                 hits += 1
-    print(f"seed=42, 10x10 采样中深海格数={hits}, query_count={o.query_count}")
+    print(f"seed=42, deep ocean cells in 10x10 sampling={hits}, query_count={o.query_count}")

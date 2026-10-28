@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-"""复现性口径修正后处理（在 peerj_oat_ablation.py 主跑批完成后运行）。
+"""Reproducibility post-processing (run after the peerj_oat_ablation.py batch finishes).
 
-1) clouded_leopard full：seed 101-105 本环境重跑并与 ablation_detail.csv 逐位比对，5/5 一致则复用旧行，否则重跑 20 seeds 替换；
-2) chlorophyll full：本环境重跑 20 seeds 替换旧 CHL full 行；
-3) minecraft：不处理（旧行已逐位核对）。
+1) clouded_leopard full: rerun seeds 101-105 in this environment and compare against ablation_detail.csv row by row; if 5/5 match, reuse the old rows, otherwise rerun 20 seeds and replace;
+2) chlorophyll full: rerun 20 seeds in this environment and replace the old CHL full rows;
+3) minecraft: not handled (old rows already verified row by row).
 """
 import csv
 import sys
@@ -21,7 +21,7 @@ DETAIL_CSV = HERE / "peerj_oat_detail.csv"
 LOG = HERE / "peerj_oat_post.log"
 OLD_CSV = ROOT / "results" / "ablation_cross" / "ablation_detail.csv"
 
-# 复用主脚本的配置
+# reuse the config of the main script
 import importlib.util
 spec = importlib.util.spec_from_file_location(
     "oat", HERE / "peerj_oat_ablation.py")

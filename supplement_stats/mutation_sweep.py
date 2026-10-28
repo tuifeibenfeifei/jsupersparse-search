@@ -6,11 +6,11 @@ for _ in range(8):
     if (REPO_ROOT / 'configs').is_dir():
         break
     REPO_ROOT = REPO_ROOT.parent
-"""mutation_streak_thresh 敏感性扫描（moving_plume + abrupt_jump 场景）。
+"""mutation_streak_thresh sensitivity sweep (moving_plume + abrupt_jump scenes).
 
-阈值档位 10/20/30/40(default)/60/80；口径 N=60, MAX_Q=1500, TARGET=20, MIN_D=2.0, seeds 101-110；
-基配置 FIX_MOTION（见 results/timevary_search/v5/_diag_v5.py，decay_tau=300, sparse_topk=5）。
-输出 supplement_stats/mutation_sweep/ 下 per-variant CSV + summary CSV。
+Threshold levels 10/20/30/40(default)/60/80; protocol N=60, MAX_Q=1500, TARGET=20, MIN_D=2.0, seeds 101-110.
+Base config FIX_MOTION (see results/timevary_search/v5/_diag_v5.py, decay_tau=300, sparse_topk=5).
+Output: per-variant CSV + summary CSV under supplement_stats/mutation_sweep/.
 """
 import csv
 import sys
@@ -78,7 +78,7 @@ def run_scene(scene_cls, tag):
         log(f"  thr={thr:3d} pts={pts.mean():5.2f} q={qs.mean():7.1f} "
             f"reach={reach:.2f}")
         per_seed_rows.extend(rows)
-    # 敏感性：Spearman(thr vs q_mean)、趋势差
+    # sensitivity: Spearman(thr vs q_mean) and trend delta
     if len(THRS) > 3:
         rho, p_rho = stats.spearmanr(THRS, [r["q_mean"] for r in summary_rows])
         log(f"  Spearman(thr, q) = {rho:+.3f} p={p_rho:.3f}")
@@ -97,7 +97,7 @@ def main():
     t0 = time.time()
     mp = run_scene(MovingPlumeOracle, "moving_plume")
     aj = run_scene(AbruptJumpOracle, "abrupt_jump")
-    log(f"[done] 总耗时 {time.time() - t0:.1f}s")
+    log(f"[done] total {time.time() - t0:.1f}s")
     with open(OUTDIR / "mutation_combined_summary.csv", "w", encoding="utf-8",
               newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(mp[0].keys()))

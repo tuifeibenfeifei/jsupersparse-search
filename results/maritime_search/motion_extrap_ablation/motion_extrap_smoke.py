@@ -8,13 +8,13 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""motion_extrap_smoke.py — 证明改进3 模块在"可积累命中的漂移目标"下确实生效。
+"""motion_extrap_smoke.py — proves the improvement-3 module actually works under "drifting targets whose hits can accumulate".
 
-合成动态 oracle：100x100，单个目标从 (50,8) 起以 (0, +0.12 列/query) 漂移，
-探测半径 R=3。静态假设下框架会在旧命中点附近打转、被目标甩开；
-开外推后应沿漂移方向追到目标前方。seeds 101-110 对比 motion off/on。
+Synthetic dynamic oracle: 100x100, a single target starting at (50,8) drifting at (0, +0.12 columns/query),
+detection radius R=3. Under the static assumption the framework circles around old hit points and is left behind by the target;
+with motion extrapolation enabled it should chase ahead of the target along the drift direction. seeds 101-110 compare motion off/on.
 
-用法: python -X utf8 motion_extrap_smoke.py
+Usage: python -X utf8 motion_extrap_smoke.py
 """
 import sys
 from pathlib import Path
@@ -27,7 +27,7 @@ from species_agent import SpeciesSearcher  # noqa: E402
 
 N = 100
 R = 3.0
-VJ = 0.12          # 列方向漂移速度（格/query）
+VJ = 0.12          # column-direction drift velocity (cells/query)
 VI = 0.0
 
 

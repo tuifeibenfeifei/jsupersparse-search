@@ -8,17 +8,17 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""build_chlor_oracle.py — 构建叶绿素实验 Oracle
-- 目标场：真实 ESA CCI 叶绿素（孟加拉湾 2024-06 月平均，241x241 @0.04°）
-  presence = chlor > p99.5（高氯热点 270 个）
-- 协变量（19 个，物理规律合成，透明标注）：
-  结构参数 7 个：sst_neg(SST 与氯负相关/上升流)、sss(盐度弱负相关/河口低盐)、
-    depth(北浅南深几何)、par(PAR 正相关/光合)、wind(风正相关/上升流)、
-    mld(混合层负相关/稀释)、coast_dist(岸距几何,间接)
-  噪声参数 12 个：noise1-12（U[0,1] 无关变量，模拟参数池噪声）
-  注：协变量与目标的统计关系符合已确立海洋学事实；数值为规律合成并含噪声，
-      算法黑盒不可见任何构造信息。
-输出：data/oracle.npz（presence uint8[H,W]、covs float32[19,H,W]、cov_names）
+"""build_chlor_oracle.py — Build chlorophyll experiment Oracle
+- Target field: real ESA CCI chlorophyll (Bay of Bengal 2024-06 monthly mean, 241x241 @0.04°)
+  presence = chlor > p99.5 (270 high-chlorophyll hotspots)
+- Covariates (19, synthesized from physical laws, transparently annotated):
+  7 structural parameters: sst_neg (SST negatively correlated with chlorophyll/upwelling), sss (weakly negative correlation with chlorophyll/estuarine low salinity),
+    depth (shallow north/deep south geometry), par (PAR positive correlation/photosynthesis), wind (wind positive correlation/upwelling),
+    mld (mixed layer negative correlation/dilution), coast_dist (coastal distance geometry, indirect)
+  12 noise parameters: noise1-12 (U[0,1] irrelevant variables, simulating parameter pool noise)
+  Note: Statistical relationships between covariates and target match established oceanographic facts; values are synthesized from laws and include noise,
+      the algorithm's black box cannot see any construction information.
+Output: data/oracle.npz (presence uint8[H,W], covs float32[19,H,W], cov_names)
 """
 import csv
 import numpy as np
@@ -27,7 +27,7 @@ from pathlib import Path
 OUT = Path(REPO_ROOT / "chlorophyll-search/data")
 rng = np.random.RandomState(42)
 
-# 1) 读真实氯场 → 网格
+# 1) Read real chlorophyll field → grid
 rows = []
 with open(OUT / "raw_chlorophyll.csv", encoding="utf-8") as f:
     for r in csv.DictReader(f):
@@ -35,7 +35,7 @@ with open(OUT / "raw_chlorophyll.csv", encoding="utf-8") as f:
 lats = np.array([r[0] for r in rows])
 lons = np.array([r[1] for r in rows])
 chl = np.array([r[2] for r in rows])
-uniq_lat = np.sort(np.unique(np.round(lats, 3)))[::-1]   # 降序（北→南）
+uniq_lat = np.sort(np.unique(np.round(lats, 3)))[::-1]   # descending order (north→south)
 uniq_lon = np.sort(np.unique(np.round(lons, 3)))
 H, W = len(uniq_lat), len(uniq_lon)
 lat2i = {v: i for i, v in enumerate(uniq_lat)}
@@ -46,25 +46,25 @@ for (la, lo, c) in rows:
     chl_grid[i, j] = c
 print("grid", chl_grid.shape, "nan", int(np.isnan(chl_grid).sum()))
 med = float(np.nanmedian(chl_grid))
-chl_grid = np.nan_to_num(chl_grid, nan=med)   # 云/陆掩膜 → 全局中值
+chl_grid = np.nan_to_num(chl_grid, nan=med)   # cloud/land mask → global median
 
-# 2) presence：高氯热点
+# 2) presence: high-chlorophyll hotspots
 valid = chl_grid[chl_grid >= 0]
 p995 = float(np.percentile(valid, 99.5))
 presence = (chl_grid > p995).astype(np.uint8)
 print("presence:", int(presence.sum()), "thr=%.3f" % p995, "grid", H, "x", W)
 
-# 3) 归一化氯 [0,1]
+# 3) Normalize chlorophyll [0,1]
 lo, hi = float(valid.min()), float(valid.max())
 chl_n = np.clip((chl_grid - lo) / (hi - lo), 0.0, 1.0)
 
-# 4) 网格坐标（几何参数）
+# 4) Grid coordinates (geometric parameters)
 ii, jj = np.meshgrid(np.arange(H), np.arange(W), indexing="ij")
-lat_n = (ii / max(H - 1, 1)).astype(np.float64)      # 0=北 1=南
+lat_n = (ii / max(H - 1, 1)).astype(np.float64)      # 0=north 1=south
 lon_n = (jj / max(W - 1, 1)).astype(np.float64)
-# 海岸距离（到网格边缘的最小归一化距离，近似离岸远近；北/东侧近岸为孟加拉湾地形特征）
+# Coastal distance (minimum normalized distance to grid edge, approximating offshore distance; north/east nearshore is a Bay of Bengal topographic feature)
 coast_d = np.minimum(np.minimum(lat_n, 1 - lat_n), np.minimum(lon_n, 1 - lon_n))
-# depth：北浅南深（恒河陆架）+ 岸近浅
+# depth: shallow north/deep south (Ganges shelf) + shallow near coast
 depth = (0.70 * (1.0 - lat_n) + 0.25 * (1.0 - coast_d) + 0.05 * rng.rand(H, W))
 depth = np.clip(depth, 0, 1)
 
@@ -85,12 +85,12 @@ for k in range(7, 19):
 cov_names = ["sst_neg", "sss", "depth", "par", "wind", "mld", "coast_dist"] + \
             ["noise%d" % (k - 6) for k in range(7, 19)]
 
-# oracle.py 兼容键：网格上下翻转使 i=0 对应最小纬度（南界）
+# oracle.py compatibility key: flip grid vertically so i=0 corresponds to minimum latitude (south boundary)
 presence = presence[::-1].copy()
 covs = covs[:, ::-1].copy()
 cell_deg = 0.04166666666666667
-lat0 = 9.979166666666671      # 最小纬度（翻转后 i=0 处）
-lon0 = 85.02083333333331      # 最小经度
+lat0 = 9.979166666666671      # minimum latitude (after flip at i=0)
+lon0 = 85.02083333333331      # minimum longitude
 
 np.savez(OUT / "oracle.npz", presence=presence, covs=covs, cov_names=np.array(cov_names),
          chlor_thr=p995, chlor_grid=chl_grid[::-1].astype(np.float32),

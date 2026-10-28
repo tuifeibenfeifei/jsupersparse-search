@@ -8,10 +8,10 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""fetch_ocean3d.py v4 — EMODNET 真实 4D 溶解氧（西地中海子集），无括号索引语法
-源：all_european_seas_DO_4D_6b2d_86a0_45c7（EMODnet Chemistry DIVAnd 4D，102 深度层 × 0.125°）
-变量：Water_body_dissolved_oxygen_concentration [time=12][depth=102][lat][lon] umol/l
-子集：36-44N × -6-12E，time[0]，depth 0-1500m（步长 2）
+"""fetch_ocean3d.py v4 - EMODnet real 4D dissolved oxygen (western Mediterranean subset), no bracketed index syntax.
+Source: all_european_seas_DO_4D_6b2d_86a0_45c7 (EMODnet Chemistry DIVAnd 4D, 102 depth levels x 0.125 deg).
+Variable: Water_body_dissolved_oxygen_concentration [time=12][depth=102][lat][lon] umol/l.
+Subset: 36-44N x -6-12E, time[0], depth 0-1500 m (step 2).
 """
 import csv
 import urllib.request

@@ -8,13 +8,13 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""motion_extrap_ablation.py — 改进3（运动外推，默认关闭）A/B 自测。
+"""motion_extrap_ablation.py — improvement 3 (motion extrapolation, off by default) A/B self-test.
 
-海上搜救场景：MaritimeOracle 的 presence 沿 traj 随 query_count(时间) 漂移，
-静态栖息地假设失效。对比 motion_extrapolation=False（基线，variant F 行为）
-vs True（开运动外推），seeds 101-110。单进程串行。
+Maritime search-and-rescue scenario: the MaritimeOracle presence drifts along traj with query_count (time),
+so the static-habitat assumption fails. Compare motion_extrapolation=False (baseline, variant F behavior)
+vs True (motion extrapolation on), seeds 101-110. Single process, sequential.
 
-用法: python -X utf8 motion_extrap_ablation.py
+Usage: python -X utf8 motion_extrap_ablation.py
 """
 import csv
 import sys
@@ -42,7 +42,7 @@ plt.rcParams["axes.unicode_minus"] = False
 
 SEEDS = list(range(101, 111))
 
-# 与 run_maritime.py 同口径 config
+# config with the same convention as run_maritime.py
 BASE = dict(target_points=15, max_queries=600, min_dist_cells=1.0,
             stage1_grid_step=4, cov_indices=list(range(19)),
             multicluster=True, cluster_ring_ratio=10.0, cluster_idle_limit=12,
@@ -57,7 +57,7 @@ def run_mode(motion):
     cfg["motion_extrapolation"] = motion
     rows = []
     for seed in SEEDS:
-        orc = MaritimeOracle(NPZ)   # 每 seed fresh oracle（query_count 由 run_episode 复位）
+        orc = MaritimeOracle(NPZ)   # fresh oracle per seed (query_count is reset by run_episode)
         t0 = time.time()
         res = SpeciesSearcher(orc, cfg).run_episode(seed)
         rows.append([seed, res["points_found"], res["total_queries"],
@@ -69,16 +69,16 @@ def run_mode(motion):
 
 
 def main():
-    print("=== motion_extrapolation=False（基线）===", flush=True)
+    print("=== motion_extrapolation=False (baseline) ===", flush=True)
     off = run_mode(False)
-    print("=== motion_extrapolation=True（开外推）===", flush=True)
+    print("=== motion_extrapolation=True (extrapolation on) ===", flush=True)
     on = run_mode(True)
 
     off_p = [r[1] for r in off]
     on_p = [r[1] for r in on]
     m_off, m_on = float(np.mean(off_p)), float(np.mean(on_p))
     delta = m_on - m_off
-    print(f"\n=== 基线 mean pts={m_off:.2f}   开外推 mean pts={m_on:.2f}   "
+    print(f"\n=== baseline mean pts={m_off:.2f}   extrapolation-on mean pts={m_on:.2f}   "
           f"Δ={delta:+.2f} ({(delta/m_off*100 if m_off>0 else float('nan')):+.1f}%) ===", flush=True)
 
     with open(OUT / "motion_extrap_ablation.csv", "w", newline="", encoding="utf-8-sig") as f:
@@ -93,13 +93,13 @@ def main():
 
     fig, ax = plt.subplots(figsize=(8, 5))
     x = np.arange(len(SEEDS))
-    ax.bar(x - 0.2, off_p, 0.4, label=f"motion=off 均值{m_off:.1f}")
-    ax.bar(x + 0.2, on_p, 0.4, label=f"motion=on 均值{m_on:.1f}")
+    ax.bar(x - 0.2, off_p, 0.4, label=f"motion=off mean {m_off:.1f}")
+    ax.bar(x + 0.2, on_p, 0.4, label=f"motion=on mean {m_on:.1f}")
     ax.set_xticks(x)
     ax.set_xticklabels(SEEDS)
     ax.set_xlabel("seed")
     ax.set_ylabel("points_found")
-    ax.set_title("海上搜救：运动外推开/关 A/B（动态漂移 oracle）")
+    ax.set_title("Maritime search-and-rescue: motion extrapolation on/off A/B (drifting oracle)")
     ax.legend()
     fig.tight_layout()
     fig.savefig(OUT / "motion_extrap_ablation.png", dpi=130)

@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
-"""species_agent_3d.py — 黑盒在线目标搜索框架的 3D 推广（26 方向 / 球壳远跳 / 26 邻域聚类）
-对应 species_agent.py（2D）的维度推广：
-    DIRS          8 方向   → 26 方向（3D 邻域）
-    STEPS         4 步长   → 4 步长（保持）
-    Stage1        2D 网格  → 3D 线性扫描（逐层推进）
-    聚类          8 邻域   → 26 邻域（3D 分箱 BFS）
-    环带候选      圆环     → 球壳
-    远跳          8 方向   → 3D 球壳定向远跳
-    Q 状态        (i//8,j//8) → (k//4,i//4,j//4) + 协变量分箱（加 z 层）
-其余机制（分箱密度导向 / AUC 稀疏特征选择 / A11 自适应 / 分散约束 / 覆盖指标）保持不变。
+"""species_agent_3d.py - 3D extension of the black-box online target search framework (26 directions / spherical-shell long jump / 26-neighborhood clustering)
+Dimension extension corresponding to species_agent.py (2D):
+    DIRS          8 directions -> 26 directions (3D neighborhood)
+    STEPS         4 step sizes -> 4 step sizes (unchanged)
+    Stage1        2D grid      -> 3D linear scan (advancing layer by layer)
+    clustering    8 neighborhood -> 26 neighborhood (3D binning BFS)
+    ring candidates  annulus    -> spherical shell
+    long jump     8 directions -> 3D spherical-shell directed long jump
+    Q state       (i//8,j//8) -> (k//4,i//4,j//4) + covariate binning (adding the z layer)
+All other mechanisms (binned density guidance / AUC sparse feature selection / A11 adaptation / dispersion constraint / coverage metric) are unchanged.
 """
 import math
 import random
@@ -17,7 +17,7 @@ import numpy as np
 
 from oracle3d import Oracle3D
 
-# ---- 3D 动作空间：26 方向 × 4 步长 ----
+# ---- 3D action space: 26 directions x 4 step sizes ----
 DIRS = [(dk, di, dj) for dk in (-1, 0, 1) for di in (-1, 0, 1) for dj in (-1, 0, 1)
         if not (dk == 0 and di == 0 and dj == 0)]
 STEPS = [2, 5, 10, 20]
@@ -44,21 +44,21 @@ class Searcher3D:
         self.eps_end = float(config.get("epsilon_end", 0.1))
         self.eps_decay = float(config.get("epsilon_decay", 0.999))
         self.stage1_grid_step = int(config.get("stage1_grid_step", 3))
-        # 改进1：冷启动盲扫铺开（与 2D 同口径）。"spread"=行带轮转交错（默认）；
-        # "serpentine"=完整复现旧 3D 线性光栅。
+        # improvement 1: cold-start blind sweep spread (same setup as 2D). "spread"=rotating interleaved row bands (default);
+        # "serpentine"=fully reproduces the old 3D linear raster.
         self.stage1_scan_mode = config.get("stage1_scan_mode", "spread")
         self.n_bins = int(config.get("n_bins", N_BINS))
         self._rng = random.Random(0)
         self.n_actions = len(DIRS) * len(STEPS)
         self.guidance_on = config.get("guidance_on", True)
         self.cluster_guidance = bool(config.get("cluster_guidance", False))
-        # ---- 优化项：多簇分别追 + 覆盖预算 + 三级远跳（2D 同口径；False/0 复旧行为）----
+        # ---- optimization: multi-cluster separate pursuit + coverage budget + three-level long jump (same setup as 2D; False/0 restores old behavior) ----
         self.multicluster = bool(config.get("multicluster", True))
         self.cluster_ring_ratio = float(config.get("cluster_ring_ratio", 10.0))
         self.cluster_idle_limit = int(config.get("cluster_idle_limit", 12))
         self.blank_jump = bool(config.get("blank_jump", True))
         self.coverage_budget_ratio = float(config.get("coverage_budget_ratio", 0.12))
-        # 迭代v2（与 2D 同口径）
+        # iteration v2 (same setup as 2D)
         self.blank_far_ratio = float(config.get("blank_far_ratio", 0.3))
         self.post_jump_grace = int(config.get("post_jump_grace", 6))
         self.saturate_mask = bool(config.get("saturate_mask", False))
@@ -70,7 +70,7 @@ class Searcher3D:
             self._cov_range.append((float(np.nanmin(v)), float(np.nanmax(v))))
         self.reset()
 
-    # ==================== 状态 ====================
+    # ==================== state ====================
     def reset(self):
         self.found_cells = []
         self.visited_cells = set()
@@ -85,17 +85,17 @@ class Searcher3D:
         self._stage3_idle = 0
         self.cur_cell = None
         self.convergence = []
-        # 多簇簿记（优化项1）：[{members, centroid, cover_radius, last_grown_q, saturated}]
+        # multi-cluster bookkeeping (optimization 1): [{members, centroid, cover_radius, last_grown_q, saturated}]
         self._clusters = []
-        self._last_found_cell = None      # 本轮新发现点（簇生长记账用）
-        self.stage1_end_coverage = None   # Stage1 结束时覆盖比例（优化项2 显式记录）
-        # 迭代v2：跳后节奏 / 饱和簇掩膜缓存
+        self._last_found_cell = None      # newly found cell this round (for cluster-growth bookkeeping)
+        self.stage1_end_coverage = None   # coverage ratio at end of Stage1 (explicitly recorded for optimization 2)
+        # iteration v2: post-jump cadence / saturated-cluster mask cache
         self._steps_since_jump = 0
         self._has_jumped = False
         self._far_cooldown = False
         self._eff_sm = None
         self._eff_sig = None
-        # 改进1：spread 盲扫游标（(k,i) 平面按交错列序访问，每列内扫 j；惰性初始化）
+        # improvement 1: spread blind-sweep cursor (the (k,i) plane is visited in interleaved column order, scanning j within each column; lazy initialization)
         self._s3d_inited = False
         self._s3d_plane0 = 0
         self._s3d_stride = 1
@@ -111,7 +111,7 @@ class Searcher3D:
                 return False
         return True
 
-    # ==================== 密度导向（与 2D 一致） ====================
+    # ==================== density guidance (same as 2D) ====================
     def _auc(self, pos_vals, neg_vals):
         n, m = len(pos_vals), len(neg_vals)
         if n == 0 or m == 0:
@@ -220,7 +220,7 @@ class Searcher3D:
             self._build_density()
             self._build_score_map()
 
-    # ==================== 3D 聚类（26 邻域 BFS） ====================
+    # ==================== 3D clustering (26-neighborhood BFS) ====================
     def _cluster_found_cells(self):
         o = self.oracle
         n = len(self.found_cells)
@@ -262,7 +262,7 @@ class Searcher3D:
         return clusters
 
     def _sphere_candidates(self, cluster, min_d, max_d):
-        """以簇成员为中心、[min_d,max_d] 球壳内未访问格，按导向分降序去重"""
+        """Unvisited cells within the [min_d,max_d] spherical shell centered on cluster members, deduplicated by descending guidance score."""
         o = self.oracle
         sm = self._score_map if self._score_map is not None else None
         cand = []
@@ -288,9 +288,9 @@ class Searcher3D:
             uniq.append((nk, ni, nj))
         return uniq
 
-    # ==================== 优化项1：多簇簿记（簇划分复用 26 邻域 BFS） ====================
+    # ==================== optimization 1: multi-cluster bookkeeping (cluster partition reuses the 26-neighborhood BFS) ====================
     def _sync_clusters(self):
-        """依据 found_cells 重建簇划分，沿用上一轮簇的生长时间/饱和状态。"""
+        """Rebuild the cluster partition from found_cells, reusing the previous round's growth timing/saturation state."""
         if not self.found_cells:
             self._clusters = []
             return
@@ -322,8 +322,8 @@ class Searcher3D:
         self._clusters = out
 
     def _ring_around_centroid(self, centroid, min_d, max_d):
-        """以簇质心为中心、[min_d, max_d] 球壳内未访问格，按导向分降序。
-        半径上界 = cluster_ring_ratio × min_dist（替换旧 max(5, min_dist×ratio)）。"""
+        """Unvisited cells within the [min_d, max_d] spherical shell centered on the cluster centroid, by descending guidance score.
+        Radius upper bound = cluster_ring_ratio x min_dist (replaces the old max(5, min_dist x ratio))."""
         o = self.oracle
         sm = self._score_map
         ck, ci, cj = (int(round(centroid[0])), int(round(centroid[1])),
@@ -345,7 +345,7 @@ class Searcher3D:
         return [(nk, ni, nj) for _, nk, ni, nj in cand]
 
     def _effective_score_map(self):
-        """迭代v2-B（与 2D 同口径）：idle > mask_idle_limit 的簇球域从导向分临时置零。"""
+        """Iteration v2-B (same setup as 2D): clusters whose idle > mask_idle_limit have their spherical guidance score temporarily zeroed."""
         if not self.multicluster or not self.saturate_mask or self._score_map is None:
             return self._score_map
         self._sync_clusters()
@@ -376,8 +376,8 @@ class Searcher3D:
         return sm
 
     def _blank_candidates(self, n=1):
-        """迭代v2-A（3D 同口径）：粗网格步长 max(8, min(K,L,J)//8)，先过滤
-        '距最近已发现点 ≥ far_dist' 的远距未访问格，再按全局导向分降序 top-8 随机 n。"""
+        """Iteration v2-A (same 3D setup): coarse-grid step size max(8, min(K,L,J)//8); first filter
+        out far unvisited cells that are '>= far_dist from the nearest discovered point', then take top-8 by global guidance score and sample n."""
         o = self.oracle
         step = max(8, min(o.K, o.L, o.J) // 8)
         far_dist = self.blank_far_ratio * min(o.K, o.L, o.J)
@@ -408,7 +408,7 @@ class Searcher3D:
         return [(kk, ii, jj) for _, kk, ii, jj in top[:n]]
 
     def _blank_jump(self):
-        """三级远跳 L3：空白区开簇跳。跳距由域尺寸/簇间距决定，不受比例限制。"""
+        """Three-level long jump L3: open a cluster in a blank region. Jump distance is set by domain size / cluster spacing, not limited by ratios."""
         picks = self._blank_candidates(1)
         if not picks:
             return False
@@ -416,7 +416,7 @@ class Searcher3D:
         return True
 
     def _cross_cluster_jump(self):
-        """三级远跳 L2：跨簇转移跳——跳到另一未饱和簇质心球壳的随机候选。"""
+        """Three-level long jump L2: cross-cluster transfer jump -- jump to a random candidate in the spherical shell of another unsaturated cluster centroid."""
         self._sync_clusters()
         unsat = [cl for cl in self._clusters if not cl["saturated"]]
         if len(unsat) < 2:
@@ -431,18 +431,18 @@ class Searcher3D:
         return True
 
     def _coverage_ok(self):
-        """优化项2：Stage1 盲扫预算下限。coverage_budget_ratio<=0 关闭（复旧行为）"""
+        """Optimization 2: lower bound on the Stage1 blind-sweep budget. coverage_budget_ratio<=0 disables it (restores old behavior)."""
         r = self.coverage_budget_ratio
         if r <= 0:
             return True
         return self.oracle.query_count >= int(self.max_queries * r)
 
-    # ---- 改进1：冷启动盲扫铺开（spread，3D 适配：(k,i) 平面交错列序光栅）----
+    # ---- improvement 1: cold-start blind-sweep spread (spread, 3D adaptation: interleaved-column-order raster on the (k,i) plane) ----
     def _stage1_spread_next_3d(self, c, o):
-        """以起始 (kk0,ii0) 为锚，把 (k,i) 平面展平成 row_id=kk*L+ii，按交错步长
-        访问行：先 row0, row0+stride, ..., 再 row0+1, ...；每行内 j 按 st 扫到底。
-        小预算下首批查询即散布 (k,i) 平面，扫完一行才推进下一个交错行，不会原地卡死。
-        纯算术确定性推进，不消耗 episode rng。"""
+        """Anchored at the start (kk0,ii0), flatten the (k,i) plane into row_id=kk*L+ii and, by interleaved step size,
+        visit rows: first row0, row0+stride, ..., then row0+1, ...; within each row scan j to the end at step st.
+        Under a small budget the first queries spread across the (k,i) plane, advancing to the next interleaved row only after finishing a row, so it never stalls in place.
+        Purely arithmetic deterministic advance; does not consume the episode rng."""
         st = self.stage1_grid_step
         nplane = o.K * o.L
         if not self._s3d_inited:
@@ -476,7 +476,7 @@ class Searcher3D:
     def _top_unvisited(self, k: int):
         o = self.oracle
         sm = self._effective_score_map() if self._score_map is not None else np.zeros((o.K, o.L, o.J))
-        # ---- 优化项1：多簇分别追（multicluster=True 时优先；关闭则完全走旧逻辑）----
+        # ---- optimization 1: multi-cluster separate pursuit (preferred when multicluster=True; when off, fully follows the old logic) ----
         if self.multicluster and self.found_cells:
             self._sync_clusters()
             if len(self._clusters) >= 2:
@@ -499,9 +499,9 @@ class Searcher3D:
                             break
                     if out:
                         return out
-                # 兜底：全部簇饱和 → 落到下方旧全局导向
+                # fallback: all clusters saturated -> fall through to the old global guidance below
             else:
-                # v2f 单簇：走旧全局导向 top-K；停滞 idle>=idle_blank_mix 才追加空白候选
+                # v2f single cluster: follow the old global guidance top-K; only append blank candidates when stalled idle>=idle_blank_mix
                 flat = np.argsort(sm.ravel())[::-1]
                 out = []
                 for idx in flat:
@@ -558,15 +558,15 @@ class Searcher3D:
                 return c
         return (self._rng.randrange(o.K), self._rng.randrange(o.L), self._rng.randrange(o.J))
 
-    # ==================== 3D 球壳定向远跳 ====================
+    # ==================== 3D spherical-shell directed long jump ====================
     def _far_jump(self):
         if not self.found_cells:
             return False
-        # ---- 优化项3：三级远跳（L2 跨簇转移 / L3 空白开簇优先；失败回退普通远跳）----
+        # ---- optimization 3: three-level long jump (L2 cross-cluster transfer / L3 open cluster in blank, preferred; on failure fall back to the normal long jump) ----
         if self.multicluster:
             self._sync_clusters()
             has_sat = any(cl["saturated"] for cl in self._clusters)
-            # 迭代v2-C：跳后 post_jump_grace 步无发现 = 落入死区，同样触发换区
+            # iteration v2-C: no discovery for post_jump_grace steps after the jump = landed in a dead zone, which also triggers a region switch
             dead_zone = self._steps_since_jump >= self.post_jump_grace
             if self.blank_jump and (has_sat or dead_zone):
                 if self._blank_jump():
@@ -604,7 +604,7 @@ class Searcher3D:
                         if len(cands) >= 24:
                             break
         if not cands:
-            # 回退：从已发现点向 26 方向做"方向内最优距离"定向扫描
+            # fallback: from discovered points, do a "best-distance-in-direction" directed scan toward the 26 directions
             for f in self._rng.sample(self.found_cells, min(4, len(self.found_cells))):
                 for dk, di, dj in DIRS:
                     best = None
@@ -678,10 +678,10 @@ class Searcher3D:
         nq_max = max(nq.values()) if nq else 0.0
         self.q.setdefault(s, {})[a] = old + self.lr * (r + self.gamma * nq_max - old)
 
-    # ==================== 主循环 ====================
+    # ==================== main loop ====================
     def run_episode(self, algo_seed: int = 42) -> dict:
-        # 改进2：episode 级 RNG 隔离（与 2D 同口径）。所有随机性走 self._rng 实例，
-        # 不再猴子补丁模块级 random。self._rng 仍是 random.Random，调用顺序不变。
+        # improvement 2: episode-level RNG isolation (same setup as 2D). All randomness goes through the self._rng instance,
+        # no longer monkey-patching the module-level random. self._rng remains a random.Random, and the call order is unchanged.
         self._rng = random.Random(algo_seed)
         return self._run()
 
@@ -713,18 +713,18 @@ class Searcher3D:
                 break
             if self.stage == 1 and n >= self.stage2_min and self._coverage_ok():
                 self.stage = 2
-                # 优化项2：显式记录 Stage1 盲扫结束时的覆盖比例
+                # optimization 2: explicitly record the coverage ratio at the end of the Stage1 blind sweep
                 self.stage1_end_coverage = len(self.visited_cells) / max(o.total_cells, 1)
             elif self.stage == 2 and n >= self.stage3_min:
                 self.stage = 3
             if o.query_count >= self.max_queries:
                 break
 
-            # ---- 移动决策 ----
+            # ---- move decision ----
             if self.stage == 1:
                 st = self.stage1_grid_step
                 if self.stage1_scan_mode == "serpentine":
-                    # 3D 线性扫描：优先 (k,i) 行推进，j 循环；换行后 i 回绕；层内扫完推进 k
+                    # 3D linear scan: advance along the (k,i) rows preferentially, looping j; after wrapping a row, i wraps; after finishing a layer, advance k
                     kk, ii, jj = c
                     jj2 = jj + st
                     if jj2 < o.J:
@@ -737,7 +737,7 @@ class Searcher3D:
                             nxt = (kk + 1, 0, 0) if kk + 1 < o.K else (0, 0, 0)
                     self.cur_cell = nxt
                 else:
-                    # 改进1：spread 行带轮转交错
+                    # improvement 1: rotating interleaved spread row bands
                     self.cur_cell = self._stage1_spread_next_3d(c, o)
             elif self.stage == 2:
                 k = self.cfg.get("stage2_topk", 8)
@@ -747,7 +747,7 @@ class Searcher3D:
                 self._stage3_idle += 1
                 self._steps_since_jump += 1
                 jumped = False
-                # 迭代v2-C：跳落地后 post_jump_grace 步无发现即允许再次换区
+                # iteration v2-C: after landing from a jump, no discovery for post_jump_grace steps allows another region switch
                 early_rejump = (self.post_jump_grace > 0 and self._has_jumped and not self._far_cooldown
                                 and self._steps_since_jump >= self.post_jump_grace)
                 if ((self._stage3_idle >= self.stage3_jump_interval or early_rejump)
@@ -799,12 +799,12 @@ class Searcher3D:
             "feature_log": list(self._feature_log),
             "covered_cells": len(self.visited_cells),
             "covered_ratio": len(self.visited_cells) / max(o.total_cells, 1),
-            # 优化项2：Stage1 盲扫结束时的覆盖比例（未结束为 None）
+            # optimization 2: coverage ratio at the end of the Stage1 blind sweep (None if not finished)
             "stage1_end_coverage": self.stage1_end_coverage,
         }
 
 
-# ==================== 3D 基线算法 ====================
+# ==================== 3D baseline algorithm ====================
 
 def random_baseline(oracle: Oracle3D, config: dict, algo_seed: int) -> dict:
     rng = random.Random(algo_seed)

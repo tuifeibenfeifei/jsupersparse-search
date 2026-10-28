@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
-"""run_timevary_v5.py — 五轮时变重测（物理仿真合成数据，tv_oracles）：
-变体：
+"""run_timevary_v5.py — fifth-round time-varying retest (physically simulated synthetic data, tv_oracles):
+Variants:
   moving_plume : framework_off / framework_decay300 / framework_fix_motion /
                  framework_fix_follow / framework_fix_follow_disperse
   abrupt_jump  : framework_decay300 / framework_fix_motion / framework_fix_disperse /
                  framework_fix_follow / framework_fix_follow_disperse
-单进程串行（WORKERS=1）。2 场景 × 5 变体 × 10 seeds(101-110)。
-输出到 v5/：per_seed_*.csv、summary.csv、progress.log；
-abrupt_jump 附带 seed107/109 featurelog；moving_plume 附带 seed101/102 TraceSearcher 痕迹。
+Single-process serial (WORKERS=1). 2 scenarios x 5 variants x 10 seeds (101-110).
+Outputs to v5/: per_seed_*.csv, summary.csv, progress.log;
+abrupt_jump attaches seed107/109 feature logs; moving_plume attaches seed101/102 TraceSearcher traces.
 """
 import csv
 import sys
@@ -125,7 +125,7 @@ def main():
                 w.writerow([scene_name, variant, len(pts),
                             round(pts.mean(), 2), round(pts.std(), 2),
                             round(float(np.mean(reach)), 3), round(qs.mean(), 1)])
-    log("[done] 总耗时 %.1fs -> %s" % (time.time() - t0, HERE))
+    log("[done] total time %.1fs -> %s" % (time.time() - t0, HERE))
 
 
 if __name__ == "__main__":

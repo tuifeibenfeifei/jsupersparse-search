@@ -8,20 +8,20 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""run_ocean3d.py — 3D 跨领域实验（黑盒在线目标搜索框架 → 三维水体）
-数据：真实 EMODnet DIVAnd 4D 溶解氧（地中海西部，0.25°，29 层 × 33 纬 × 73 经）
-目标：中层氧最低带低氧核（DO<=170 umol/l，1779 格 ≈ 6%）
-协变量：3 真实几何 + 4 物理规律合成代理 + 12 噪声 = 19
-配置（20 seeds, target=20, 预算 10000）：
-  O3D0_skeleton  无导向/无稀疏/无好奇（骨架）
-  O3D1_full19    v1 全 19 参数导向
-  O3D2_sparse    v2 AUC 稀疏（自动特征选择）
-  O3D3_params2   v1 只 2 结构参数
-  O3D4_params5   v1 只 5 结构参数
-  O3D5_params7   v1 只 7 结构参数
-  O3D6_cluster   v2 稀疏 + 聚类感知 + 定向球壳远跳
-  O3D7_adaptive  v2 稀疏 + A11 自适应 + 定向球壳远跳
-输出：results/ocean3d/o3d_{detail,summary}.csv
+"""run_ocean3d.py — 3D cross-domain experiment (black-box online target search framework → 3D water body)
+Data: real EMODnet DIVAnd 4D dissolved oxygen (western Mediterranean, 0.25°, 29 layers × 33 lat × 73 lon)
+Target: mid-depth oxygen minimum zone hypoxic cores (DO<=170 umol/l, 1779 cells ≈ 6%)
+Covariates: 3 real geometry + 4 physics-synthesized proxies + 12 noise = 19
+Config (20 seeds, target=20, budget 10000):
+  O3D0_skeleton  no guidance/no sparse/no curiosity (skeleton)
+  O3D1_full19    v1 all 19-parameter guidance
+  O3D2_sparse    v2 AUC sparse (automatic feature selection)
+  O3D3_params2   v1 only 2 structural parameters
+  O3D4_params5   v1 only 5 structural parameters
+  O3D5_params7   v1 only 7 structural parameters
+  O3D6_cluster   v2 sparse + cluster-aware + directed spherical-shell long jump
+  O3D7_adaptive  v2 sparse + A11 adaptive + directed spherical-shell long jump
+Output: results/ocean3d/o3d_{detail,summary}.csv
 """
 import csv
 import sys
@@ -73,8 +73,8 @@ SEEDS = list(range(101, 121))
 
 def main():
     oracle = Oracle3D(ORACLE)
-    print(f"[oracle] {oracle.K}x{oracle.L}x{oracle.J} = {oracle.total_cells} 单元, "
-          f"presence={int(oracle.presence.sum())}, {len(CONFIGS)} 配置 x {len(SEEDS)} seeds")
+    print(f"[oracle] {oracle.K}x{oracle.L}x{oracle.J} = {oracle.total_cells} cells, "
+          f"presence={int(oracle.presence.sum())}, {len(CONFIGS)} configs x {len(SEEDS)} seeds")
     detail_all, summary_rows = [], []
     for cname, over, covs in CONFIGS:
         cfg = dict(BASE, **over)
@@ -91,10 +91,10 @@ def main():
         mean = lambda x: sum(x) / n
         summary_rows.append([cname, round(mean(pts), 2), round(mean(qrs), 0),
                              round(mean(covs_), 0), round(100.0 * succ / n, 1)])
-        print(f"  {cname:16s} 点 {summary_rows[-1][1]:6.2f} | 查询 {summary_rows[-1][2]:6.0f} | "
-              f"覆盖 {summary_rows[-1][3]:6.0f} | 跑满 {summary_rows[-1][4]:5.1f}%", flush=True)
+        print(f"  {cname:16s} pts {summary_rows[-1][1]:6.2f} | queries {summary_rows[-1][2]:6.0f} | "
+              f"coverage {summary_rows[-1][3]:6.0f} | full target {summary_rows[-1][4]:5.1f}%", flush=True)
 
-    # ---- 3D 基线（random / grid） ----
+    # ---- 3D baselines (random / grid) ----
     base_cfg = dict(target_points=40, max_queries=10000, min_dist_cells=1.0,
                     grid_step=int(BASE["stage1_grid_step"]))
     for cname, kind in BASELINES:
@@ -113,8 +113,8 @@ def main():
         mean = lambda x: sum(x) / n
         summary_rows.append([cname, round(mean(pts), 2), round(mean(qrs), 0),
                              round(mean(covs_), 0), round(100.0 * succ / n, 1)])
-        print(f"  {cname:16s} 点 {summary_rows[-1][1]:6.2f} | 查询 {summary_rows[-1][2]:6.0f} | "
-              f"覆盖 {summary_rows[-1][3]:6.0f} | 跑满 {summary_rows[-1][4]:5.1f}%", flush=True)
+        print(f"  {cname:16s} pts {summary_rows[-1][1]:6.2f} | queries {summary_rows[-1][2]:6.0f} | "
+              f"coverage {summary_rows[-1][3]:6.0f} | full target {summary_rows[-1][4]:5.1f}%", flush=True)
     with open(OUT_DIR / "o3d_detail.csv", "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["config", "seed", "points_found", "queries", "covered_cells", "covered_ratio"])

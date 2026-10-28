@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""超参敏感性小网格：n_bins ∈ {4,8,16}（chlorophyll oracle，CHL_CFG 原样仅覆盖 n_bins）。
+"""Small hyperparameter-sensitivity grid: n_bins in {4,8,16} (chlorophyll oracle, CHL_CFG as-is with only n_bins overridden).
 
-种子 algo_seed 101..105，每 (n_bins, seed) 1 个 episode。
-输出 supplement_stats/peerj_nbins_scan.csv（n_bins,algo_seed,points_found,total_queries）。
+Seeds algo_seed 101..105; one episode per (n_bins, seed).
+Outputs supplement_stats/peerj_nbins_scan.csv (n_bins,algo_seed,points_found,total_queries).
 """
 import csv
 import sys
@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT))
 from oracle import SpeciesOracle  # noqa: E402
 from species_agent import SpeciesSearcher  # noqa: E402
 
-# 与 run_cross_ablation.py CHL_CFG 完全一致（逐字复制，仅追加 n_bins 覆盖）
+# identical to run_cross_ablation.py CHL_CFG (copied verbatim, with only the n_bins override added)
 CHL_CFG = dict(
     target_points=20, max_queries=4000, min_dist_cells=1.0,
     stage2_min=3, stage3_min=5, stage3_jump_interval=30,
@@ -54,8 +54,8 @@ def main():
         w.writerows(rows)
     print(f"[saved] {OUT} ({len(rows)} rows)")
 
-    # 均值小结
-    print("\n=== n_bins 扫描均值小结 ===")
+    # mean summary
+    print("\n=== n_bins scan mean summary ===")
     import numpy as np
     for nb in N_BINS_GRID:
         qs = [r[3] for r in rows if r[0] == nb]

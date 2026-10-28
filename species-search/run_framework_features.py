@@ -8,12 +8,12 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""run_framework_features.py — 自动特征选择诊断实验
-输入全部 19 个 BIO 协变量，机器在搜索中积累样本，AUC 稀疏化自动选出显著代表特征。
-输出：
-  - framework_species_sparse_features_{species}.csv     每轮选中的特征明细
-  - framework_species_sparse_features_summary_{species}.csv  20 seeds 汇总：各特征选中率/平均权重
-用法：
+"""run_framework_features.py — automatic feature-selection diagnostic experiment
+All 19 BIO covariates are fed in; the agent accumulates samples during search, and AUC sparsification automatically selects the significant representative features.
+Outputs:
+  - framework_species_sparse_features_{species}.csv     details of features selected each round
+  - framework_species_sparse_features_summary_{species}.csv  20-seed summary: per-feature selection rate / average weight
+Usage:
   python run_framework_features.py <oracle_path> <species_tag> [n_seeds]
 """
 import csv
@@ -47,7 +47,7 @@ BASE_CONFIG = dict(
     cov_in_state=True,
     recalc_every=20,
     stage2_topk=8,
-    sparse_guidance=True,     # 输入 19，自动稀疏选特征
+    sparse_guidance=True,     # feed in all 19, auto sparse feature selection
     sparse_topk=6,
     sparse_min_pos=5,
 )
@@ -64,12 +64,12 @@ def main():
 
     oracle = SpeciesOracle(oracle_path)
     names = oracle.cov_names
-    print(f"[oracle] {oracle.nrows}x{oracle.ncols} 网格, presence={int(oracle.presence.sum())}, "
-          f"协变量 {len(names)} 个: {names}")
+    print(f"[oracle] {oracle.nrows}x{oracle.ncols} grid, presence={int(oracle.presence.sum())}, "
+          f"{len(names)} covariates: {names}")
 
-    cfg = dict(BASE_CONFIG, cov_indices=list(range(oracle.covs.shape[0])))  # 输入全部 19
+    cfg = dict(BASE_CONFIG, cov_indices=list(range(oracle.covs.shape[0])))  # feed in all 19
     detail_rows = []
-    # 汇总统计（按 seed 去重）：变量索引 -> 被选中的 seed 集合
+    # aggregate stats (deduped per seed): variable index -> set of seeds that selected it
     seed_sel = defaultdict(set)
     weight_sum = defaultdict(float)
     first_sel_q = defaultdict(list)
@@ -89,8 +89,8 @@ def main():
                 first_sel_q[k].append(n_q)
         for k in seen_in_seed:
             seed_sel[k].add(seed)
-        print(f"[seed {seed}] 点 {res['points_found']}/20 | 查询 {res['total_queries']} | "
-              f"特征选择轮次 {len(res['feature_log'])}")
+        print(f"[seed {seed}] points {res['points_found']}/20 | queries {res['total_queries']} | "
+              f"feature-selection rounds {len(res['feature_log'])}")
 
     with open(OUT_DIR / f"framework_species_sparse_features_{species}.csv", "w",
               newline="", encoding="utf-8") as f:
@@ -98,7 +98,7 @@ def main():
         w.writerow(["seed", "query", "n_pos", "selected_features(idx=weight)"])
         w.writerows(detail_rows)
 
-    # 汇总：选中率 = 选中该变量的 seed 数占比；平均权重；平均首次选中查询
+    # summary: selection rate = fraction of seeds that selected the variable; average weight; average first-selection query
     n_seeds_used = len(seeds)
     rows = []
     for k in range(len(names)):
@@ -117,10 +117,10 @@ def main():
         w.writerow(["feature", "selected_seed_rate(%)", "avg_weight", "avg_first_select_query"])
         w.writerows(rows)
 
-    print(f"\n[自动特征选择汇总] {species}（{n_seeds} seeds）按选中率降序：")
+    print(f"\n[automatic feature-selection summary] {species} ({n_seeds} seeds) sorted by selection rate descending:")
     for r in rows:
-        print(f"  {r[0]:6s}  选中率 {r[1]:5.1f}%  平均权重 {r[2]:.4f}  首次选中 @~{r[3]}")
-    print(f"\n[done] 特征诊断已保存 -> {OUT_DIR}")
+        print(f"  {r[0]:6s}  sel.rate {r[1]:5.1f}%  avg weight {r[2]:.4f}  first select @~{r[3]}")
+    print(f"\n[done] feature diagnostics saved -> {OUT_DIR}")
     return 0
 
 

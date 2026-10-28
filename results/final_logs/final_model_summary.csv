@@ -1,2 +1,2 @@
 ﻿label,mean_points,std_points,mean_queries,std_queries,success_rate,target_reached_count,n_runs
-final_model,40.0,0.0,3546.605,846.1492445041831,1.0,400,400
+final_model,40.0,0.0,2117.63,1104.00434016357,1.0,400,400

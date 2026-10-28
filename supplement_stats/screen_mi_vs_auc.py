@@ -6,10 +6,10 @@ for _ in range(8):
     if (REPO_ROOT / 'configs').is_dir():
         break
     REPO_ROOT = REPO_ROOT.parent
-"""S3 替身对照：同一两阶段屏幕流程下，精筛统计量 AUC vs 互信息（叶绿素场）。
+"""S3 proxy control: under the same two-stage screening pipeline, compare fine-screening statistic AUC vs mutual information (chlorophyll field).
 
-AUC 版阈值 weak_signal_min_auc=0.52；MI 版分箱 B=8、log2 比特，取同数量 K。
-输出屏幕排序质量（Rec@7、真协变量均值秩、噪声最佳秩）与选择集质量（选中真/噪声数）。
+AUC version threshold weak_signal_min_auc=0.52; MI version binning B=8, log2 bits, same count K.
+Outputs screening ranking quality (Rec@7, true covariate mean rank, noise best rank) and selected set quality (selected true/noise count).
 """
 import csv
 import os
@@ -22,14 +22,14 @@ OUT = Path(REPO_ROOT / "supplement_stats")
 NPZ = Path(REPO_ROOT / "chlorophyll-search/data/oracle.npz")
 
 N_BINS = 8
-TRUE_IDS = list(range(7))          # sst_neg..coast_dist 为真信号
+TRUE_IDS = list(range(7))          # sst_neg..coast_dist are true signals
 N_NOISE = 12
 SAMPLE_SIZES = [100, 250, 500, 1000, 2000, 4000, 6000]
 SAMPLING_SEEDS = [101, 102, 103, 104, 105]
-WEAK_SIG_MIN_AUC = 0.52            # 框架默认（species_agent.py weak_signal_min_auc）
-SPARSE_MIN_POS = 5                 # 框架默认：正样本 >=5 才启用稀疏屏幕（sparse_min_pos）
-SPARSE_TOPK_BASE = 6               # 框架默认 sparse_topk，随 n_pos 渐进放宽
-VARIANCE_TOP = 12                  # 框架默认预筛 top-12
+WEAK_SIG_MIN_AUC = 0.52            # framework default (species_agent.py weak_signal_min_auc)
+SPARSE_MIN_POS = 5                 # framework default: sparse screening enabled only when positive samples >=5 (sparse_min_pos)
+SPARSE_TOPK_BASE = 6               # framework default sparse_topk, progressively relaxed with n_pos
+VARIANCE_TOP = 12                  # framework default pre-screen top-12
 
 rng_master = np.random.RandomState(2026)
 d = np.load(NPZ)
@@ -41,7 +41,7 @@ NCELL = presence.size
 
 
 def auc_separation(pos_vals, neg_vals):
-    """复刻框架 _auc：MWU AUC，方向无关（取 max(auc, 1-auc)）"""
+    """Replicate framework _auc: MWU AUC, direction-agnostic (take max(auc, 1-auc))"""
     n, m = len(pos_vals), len(neg_vals)
     if n == 0 or m == 0:
         return np.nan
@@ -53,7 +53,7 @@ def auc_separation(pos_vals, neg_vals):
 
 
 def mi_binned(vals, y, bins=N_BINS):
-    """等宽分箱互信息 I(Cov_bin; Y)，log2 比特"""
+    """Equal-width binned mutual information I(Cov_bin; Y), log2 bits"""
     if len(vals) < 2:
         return 0.0
     lo, hi = float(vals.min()), float(vals.max())
@@ -82,8 +82,8 @@ def mi_binned(vals, y, bins=N_BINS):
 
 
 def bin_density_variance(vals, y, bins=N_BINS):
-    """复刻框架粗筛统计量（species_agent.py L315-334）：分箱 B=8 → 每箱 presence
-    密度 → 密度向量方差；无查询箱用全局出现率平滑。"""
+    """Replicate framework coarse-screening statistic (species_agent.py L315-334): bin B=8 -> per-bin presence
+    density -> density vector variance; unqueried bins smoothed with global presence rate."""
     lo, hi = float(np.min(vals)), float(np.max(vals))
     if hi - lo < 1e-9:
         hi = lo + 1.0
@@ -99,18 +99,18 @@ def bin_density_variance(vals, y, bins=N_BINS):
 
 
 def evaluate(sample_idx, sample_y):
-    """给定样本（网格索引 + presence），复刻框架稀疏屏幕流程并替换精筛统计量。
+    """Given samples (grid indices + presence), replicate the framework sparse screening pipeline and replace the fine-screening statistic.
 
-    框架流程（species_agent.py L336-373）：
-      触发 n_pos>=5 → 粗筛 top-12（箱密度方差）→ 精筛排序取 topk → 保留 >weak_signal_min_auc
-      topk = sparse_topk_base + (n_pos-5)//15，取 min(.., 池大小)
-    MI 版：同一粗筛池、同一 topk，按互信息排序取同样数量 K（只换精筛统计量）。
+    Framework pipeline (species_agent.py L336-373):
+      trigger n_pos>=5 -> coarse screen top-12 (bin density variance) -> fine-screen ranking take topk -> retain >weak_signal_min_auc
+      topk = sparse_topk_base + (n_pos-5)//15, take min(.., pool size)
+    MI version: same coarse-screen pool, same topk, rank by mutual information and take the same count K (only replacing the fine-screening statistic).
     """
     n = len(sample_idx)
     X = covs[:, sample_idx[:, 0], sample_idx[:, 1]].T          # (n, 19)
     pos = sample_y
     n_pos = int(pos.sum())
-    if n_pos < SPARSE_MIN_POS:                                # 稀疏屏幕触发门槛
+    if n_pos < SPARSE_MIN_POS:                                # sparse screening trigger threshold
         return None
 
     rows = []
@@ -139,17 +139,17 @@ def evaluate(sample_idx, sample_y):
         return dict(rec7=rec7, rec12=rec12, true_mean_rank=float(np.mean(true_rk)),
                     noise_best_rank=int(noise_best), sel_true=sel_true, sel_noise=sel_noise)
 
-    # 共同流程：箱密度方差粗筛 top-12 + 渐进 topk
+    # Common pipeline: bin density variance coarse screen top-12 + progressive topk
     var_order = np.argsort(-np.asarray(dens_vars, dtype=float), kind="stable")[:VARIANCE_TOP]
     topk = min(SPARSE_TOPK_BASE + max(0, (n_pos - 5) // 15), len(var_order))
 
-    # AUC 版：粗筛池内按 AUC 排序取 topk，保留 > 阈值
+    # AUC version: within coarse-screen pool, rank by AUC and take topk, retain > threshold
     auc_pool = {k[i]: aucs[i] for i in var_order}
     ranked_a = sorted(var_order, key=lambda i: -auc_pool[i])[:topk]
     sel_auc = [i for i in ranked_a if auc_pool[i] > WEAK_SIG_MIN_AUC]
     K = len(sel_auc)
 
-    # MI 版：同一池、同一 topk，按互信息排序取同样数量 K
+    # MI version: same pool, same topk, rank by mutual information and take the same count K
     mi_pool = {k[i]: mis[i] for i in var_order}
     ranked_m = sorted(var_order, key=lambda i: -mi_pool[i])[:topk]
     sel_mi = ranked_m[:K]
@@ -165,11 +165,11 @@ def evaluate(sample_idx, sample_y):
 
 def main():
     os.makedirs(OUT, exist_ok=True)
-    # 预生成采样（各种子独立）
+    # Pre-generate samples (independent per seed)
     records = []
     for seed in SAMPLING_SEEDS:
         rng = np.random.RandomState(seed)
-        # 均匀采样网格坐标（不替换，保证同点不重复查询）
+        # Uniformly sample grid coordinates (without replacement, ensuring no point is queried twice)
         cells = np.random.RandomState(seed).choice(NCELL, size=max(SAMPLE_SIZES), replace=False)
         idx = np.array([(c // W, c % W) for c in cells])
         y = presence[idx[:, 0], idx[:, 1]]
@@ -189,24 +189,24 @@ def main():
                                     noise_best_rank=q["noise_best_rank"],
                                     sel_true=q["sel_true"], sel_noise=q["sel_noise"]))
 
-    # 写 CSV
+    # Write CSV
     csv_path = OUT / "screen_mi_vs_auc.csv"
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(records[0].keys()))
         w.writeheader()
         w.writerows(records)
 
-    # 汇总（均值；n_pos 取均值）
+    # Summary (mean; n_pos averaged)
     print("=" * 92)
-    print("S3 信息论屏幕 vs AUC 屏幕（叶绿素 7真+12噪；粗筛 top-12 → 精筛；5 种子均值）")
+    print("S3 information-theoretic screen vs AUC screen (chlorophyll 7 true + 12 noise; coarse top-12 -> fine screen; mean over 5 seeds)")
     print("=" * 92)
-    print(f"{'n':>6} {'n_pos':>5} {'池真':>4} {'K':>3} | {'screen':<5} {'Rec@7':>6} {'Rec@12':>6} "
-          f"{'真均值秩':>7} {'噪最佳秩':>7} {'选中真':>5} {'选中噪':>5}")
+    print(f"{'n':>6} {'n_pos':>5} {'pool_t':>4} {'K':>3} | {'screen':<5} {'Rec@7':>6} {'Rec@12':>6} "
+          f"{'true_rk':>7} {'noise_rk':>7} {'sel_true':>5} {'sel_noise':>5}")
     for n in SAMPLE_SIZES:
         for screen in ("auc", "mi"):
             rs = [r for r in records if r["n"] == n and r["screen"] == screen and r["rec7"] != ""]
             if not rs:
-                print(f"{n:>6} {'—':>5} {'—':>4} {'—':>3} | {screen:<5}  (n_pos<5，稀疏屏幕不触发)")
+                print(f"{n:>6} {'-':>5} {'-':>4} {'-':>3} | {screen:<5}  (n_pos<5, sparse screening not triggered)")
                 continue
             def avg(field):
                 vals = [float(r[field]) for r in rs]

@@ -6,10 +6,10 @@ for _ in range(8):
     if (REPO_ROOT / 'configs').is_dir():
         break
     REPO_ROOT = REPO_ROOT.parent
-"""置换对照复跑（TABLE XIII 全量统一）：perm7 置换 7 个真实协变量，perm12 置换 12 个噪声协变量。
+"""Permutation-control rerun (TABLE XIII fully unified): perm7 permutes 7 real covariates, perm12 permutes 12 noise covariates.
 
-逐平面独立随机置换（保边际分布、毁空间结构），presence 保持原样，置换在全部算法种子上固定。
-输出 perm_oracles/oracle_perm7.npz / oracle_perm12.npz、perm_control.csv。
+Independent random permutation per plane (preserving marginal distributions, destroying spatial structure); presence is left unchanged; the permutation is fixed across all algorithm seeds.
+Outputs perm_oracles/oracle_perm7.npz / oracle_perm12.npz and perm_control.csv.
 """
 import csv
 import sys
@@ -32,7 +32,7 @@ PERM_DIR.mkdir(exist_ok=True)
 ORACLE_PATH = ROOT / "chlorophyll-search" / "data" / "oracle.npz"
 OUT_CSV = HERE / "perm_control.csv"
 
-SEEDS = list(range(101, 121))  # 与 TABLE XIII 声明一致（N = 20）
+SEEDS = list(range(101, 121))  # consistent with the TABLE XIII statement (N = 20)
 
 CHL_CFG = dict(
     target_points=20, max_queries=4000, min_dist_cells=1.0,
@@ -49,7 +49,7 @@ CHL_CFG = dict(
     cov_indices=list(range(19)), adaptive=True, directed_jump=True,
 )
 
-# 置换种子（固定、可复现；记录于脚本与补充材料）
+# permutation seed (fixed, reproducible; recorded in the script and supplement)
 PERM_SEED_7 = 202607
 PERM_SEED_12 = 202612
 
@@ -83,7 +83,7 @@ def run_arm(name, npz_path):
 
 
 def main():
-    # 确认协变量命名（前 7 = 真信号，后 12 = 噪声）
+    # confirm covariate naming (first 7 = real signal, last 12 = noise)
     d0 = np.load(ORACLE_PATH)
     names = [str(x) for x in d0["cov_names"]]
     print("cov_names:", names)
@@ -106,7 +106,7 @@ def main():
             w.writerow(["perm12", ag, p, q])
     print("WROTE", OUT_CSV)
 
-    # 与 Real（1596.25，ablation_cross 同批）对比的百分比
+    # percentage change vs Real (1596.25, same batch as ablation_cross)
     real_q = 1596.25
     for name, rows in (("perm7", r7), ("perm12", r12)):
         mq = sum(r[2] for r in rows) / len(rows)

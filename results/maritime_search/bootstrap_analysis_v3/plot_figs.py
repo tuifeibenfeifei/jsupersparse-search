@@ -8,9 +8,9 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""任务二绘图：基于 diagnose.py 产出的 _artifacts.npz + baseline.csv 画中文图。
-图 a) 漂移走廊 + seed101 visited 二值图 + 发现点；
-图 b) 逐 seed 命中数随 query 时刻曲线。
+"""Task 2 plotting: Generate figures based on _artifacts.npz + baseline.csv produced by diagnose.py.
+Figure a) Drift corridor + seed101 visited binary map + discovered points;
+Figure b) Per-seed hit count vs query time curve.
 """
 from pathlib import Path
 import numpy as np
@@ -29,47 +29,47 @@ R_km = float(art["R_km"])
 nrows = int(art["nrows"]); ncols = int(art["ncols"])
 P0_cell = tuple(int(v) for v in art["P0_cell"])
 visited101 = art["visited101"]     # (nrows,ncols) 0/1
-found101 = art["found101"]         # (K,2) 行/列
+found101 = art["found101"]         # (K,2) row/col
 seeds = [int(s) for s in art["seeds"]]
 
-# ---- 图 a: 漂移走廊 + visited101 + 发现点 ----
+# ---- Figure a: drift corridor + visited101 + discovered points ----
 fig, ax = plt.subplots(figsize=(9, 8))
-# visited 二值图（黑色=已访问）
+# visited binary map (black = visited)
 ax.imshow(visited101, cmap="Greys", origin="lower",
           extent=[0, ncols, 0, nrows], alpha=0.55, aspect="equal")
-# 漂移轨迹 km -> 格坐标
+# drift trajectory km -> grid coordinates
 tj = traj[:, 0] / cell_km - 0.5
 ti = traj[:, 1] / cell_km - 0.5
-ax.plot(tj, ti, color="tab:red", lw=1.8, label="目标漂移轨迹(走廊)")
-# 起点/终点
-ax.scatter([tj[0]], [ti[0]], color="tab:green", s=80, zorder=5, marker="o", label="P0 落水点")
-ax.scatter([tj[-1]], [ti[-1]], color="tab:orange", s=80, zorder=5, marker="*", label="轨迹末点")
-# 探测半径带（沿轨迹 ±R_cell）
+ax.plot(tj, ti, color="tab:red", lw=1.8, label="target drift trajectory (corridor)")
+# Start/end point
+ax.scatter([tj[0]], [ti[0]], color="tab:green", s=80, zorder=5, marker="o", label="P0 water entry point")
+ax.scatter([tj[-1]], [ti[-1]], color="tab:orange", s=80, zorder=5, marker="*", label="trajectory endpoint")
+# Detection radius band (along trajectory ±R_cell)
 R_cell = R_km / cell_km
 ax.fill_between(tj, ti - R_cell, ti + R_cell, color="tab:red", alpha=0.12,
-                label=f"探测半径带 ±{R_cell:.0f}格(={R_km:.0f}km)")
-# 发现点
+                label=f"detection radius band ±{R_cell:.0f} cells (={R_km:.0f}km)")
+# Discovered points
 if len(found101) > 0:
     ax.scatter(found101[:, 1], found101[:, 0], color="cyan", edgecolor="k",
-               s=70, zorder=6, marker="X", label=f"seed101 发现点(n={len(found101)})")
+               s=70, zorder=6, marker="X", label=f"seed101 discovered points (n={len(found101)})")
 ax.set_xlim(0, ncols); ax.set_ylim(0, nrows)
-ax.set_xlabel("列 j (格)"); ax.set_ylabel("行 i (格)")
-ax.set_title("海上搜救 seed101：Stage1 盲扫列带 vs 漂移走廊几何关系")
+ax.set_xlabel("column j (cells)"); ax.set_ylabel("row i (cells)")
+ax.set_title("Maritime search seed101: Stage1 blind sweep column bands vs drift corridor geometry")
 ax.legend(loc="upper right", fontsize=9)
 plt.tight_layout()
 plt.savefig(OUT / "fig_a_trajectory_overlay.png", dpi=130)
 plt.close()
 print("fig_a -> fig_a_trajectory_overlay.png", flush=True)
 
-# ---- 图 b: 逐 seed 命中数随时间 ----
+# ---- Figure b: per-seed hit count over time ----
 fig, ax = plt.subplots(figsize=(10, 6))
 for seed in seeds:
     q = art[f"q_{seed}"]; f = art[f"f_{seed}"]
     ax.plot(q, f, lw=1.4, marker=".", ms=4, label=f"seed{seed}")
 ax.axhline(15, color="k", ls="--", lw=1, alpha=0.5, label="target=15")
-ax.set_xlabel("query 时刻 (=时间步, 每步0.5h)")
-ax.set_ylabel("累计发现点数")
-ax.set_title("逐 seed 命中数随时间曲线（600 预算撞满 vs 漂移目标）")
+ax.set_xlabel("query time (=time step, 0.5h per step)")
+ax.set_ylabel("cumulative discovered points")
+ax.set_title("Per-seed hit count over time (600 budget saturated vs drifting target)")
 ax.legend(ncol=5, fontsize=8, loc="upper center")
 ax.grid(alpha=0.3)
 plt.tight_layout()

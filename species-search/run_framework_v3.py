@@ -8,12 +8,12 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""run_framework_v3.py — v3 优化实验：冷启动 + 定向远跳 + 覆盖指标显式化
-输入全部 19 个 BIO 变量，sparse_guidance 自动特征选择。
-输出（results/species_search/）：
-  framework_species_v3_{species}_params19.csv      每 seed 明细（点数/查询/覆盖/双集群）
-  framework_species_v3_summary_{species}.csv       v3 聚合 + v2 对比
-用法：
+"""run_framework_v3.py — v3 optimization experiment: cold start + directed long jump + explicit coverage metrics
+All 19 BIO variables are fed in; sparse_guidance does automatic feature selection.
+Outputs (results/species_search/):
+  framework_species_v3_{species}_params19.csv      per-seed details (points/queries/coverage/dual cluster)
+  framework_species_v3_summary_{species}.csv       v3 aggregation + v2 comparison
+Usage:
   python run_framework_v3.py <oracle_path> <species_tag> <cluster_A> <cluster_B> [n_seeds]
 """
 import csv
@@ -49,9 +49,9 @@ BASE_CONFIG = dict(
     sparse_guidance=True,
     sparse_topk=6,
     sparse_min_pos=5,
-    # v3 优化开关
-    cold_start_samples=300,   # 冷启动：总样本 < 300 时全量加权，防 AUC 小样本噪声
-    directed_jump=True,       # 定向远跳：向未覆盖高分带
+    # v3 optimization switches
+    cold_start_samples=300,   # cold start: when total samples < 300, weight all samples fully to prevent AUC small-sample noise
+    directed_jump=True,       # directed long jump: jump toward uncovered high-score bands
 )
 
 
@@ -76,8 +76,8 @@ def main():
     seeds = list(range(101, 101 + n_seeds))
 
     oracle = SpeciesOracle(oracle_path)
-    print(f"[oracle] {oracle.nrows}x{oracle.ncols} 网格, presence={int(oracle.presence.sum())}, "
-          f"研究区 {oracle.nrows * oracle.ncols} 单元")
+    print(f"[oracle] {oracle.nrows}x{oracle.ncols} grid, presence={int(oracle.presence.sum())}, "
+          f"{oracle.nrows * oracle.ncols} cells in the study area")
 
     cfg = dict(BASE_CONFIG, cov_indices=list(range(oracle.covs.shape[0])))
     detail = []
@@ -95,8 +95,8 @@ def main():
         tot["cov_ratio"].append(res["covered_ratio"])
         tot["dual"].append(dual_hit)
         tot["succ"] += 1 if res["points_found"] >= 20 else 0
-        print(f"[seed {seed}] 点 {res['points_found']}/20 | 查询 {res['total_queries']} | "
-              f"覆盖 {res['covered_cells']} ({res['covered_ratio']:.3f}) | 双集群 {dual_hit}")
+        print(f"[seed {seed}] points {res['points_found']}/20 | queries {res['total_queries']} | "
+              f"covered {res['covered_cells']} ({res['covered_ratio']:.3f}) | dual cluster {dual_hit}")
 
     with open(OUT_DIR / f"framework_species_v3_{species}_params19.csv", "w",
               newline="", encoding="utf-8") as f:
@@ -120,7 +120,7 @@ def main():
         w.writerow(["metric", "v3_value"])
         for k, v in summary.items():
             w.writerow([k, v])
-    print(f"\n[v3 汇总] {species}（{n} seeds，输入19+自动选择+冷启动+定向远跳）")
+    print(f"\n[v3 summary] {species} ({n} seeds, input 19 + auto selection + cold start + directed long jump)")
     for k, v in summary.items():
         print(f"  {k:22s} {v}")
     print(f"\n[done] -> {OUT_DIR}")

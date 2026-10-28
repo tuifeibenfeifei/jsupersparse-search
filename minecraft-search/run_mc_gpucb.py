@@ -8,15 +8,15 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""run_mc_gpucb.py — MC 场景 GP-UCB 基线（降采样 50x50=2500 格）。
+"""run_mc_gpucb.py — MC scenario GP-UCB baseline (downsampled 50x50=2500 cells).
 
-思路：
-  - 把 100x100 研究区降采样到 50x50（每 2 格取 1），共 2500 候选格
-  - 初始随机查 10 个点
-  - 之后每 20 步用已查询点训练 GP（RBF 核），在所有未查格上算
-    UCB = mean + kappa * std，选最高者查询
-  - presence 为 0/1，GP 回归到连续值
-输出 results/minecraft_search/baseline_mc_gpucb.csv
+Approach:
+  - Downsample the 100x100 study area to 50x50 (take 1 cell every 2), totaling 2500 candidate cells
+  - Initially query 10 random points
+  - Then every 20 steps, train a GP (RBF kernel) on queried points, compute on all unqueried cells
+    UCB = mean + kappa * std, select the highest for query
+  - presence is 0/1; GP regresses to continuous values
+Output results/minecraft_search/baseline_mc_gpucb.csv
 """
 import csv
 import math
@@ -43,7 +43,7 @@ ALGO_SEEDS = list(range(101, 106))
 TARGET = 40
 MAX_Q = 10000
 MIN_D = 2.0
-DOWNSAMPLE = 2  # 每 2 格取 1 -> 50x50=2500
+DOWNSAMPLE = 2  # Take 1 cell every 2 -> 50x50=2500
 KAPPA = 2.0
 INIT_RANDOM = 10
 RETRAIN_EVERY = 20
@@ -64,7 +64,7 @@ def run_gpucb(oracle, algo_seed):
     rng = np.random.RandomState(algo_seed)
     nrows, ncols = oracle.nrows, oracle.ncols  # 100, 100
 
-    # 降采样候选格（中心对齐）
+    # Downsampled candidate cells (center-aligned)
     cand_i = np.arange(1, nrows, DOWNSAMPLE)
     cand_j = np.arange(1, ncols, DOWNSAMPLE)
     ci_grid, cj_grid = np.meshgrid(cand_i, cand_j, indexing="ij")
@@ -84,7 +84,7 @@ def run_gpucb(oracle, algo_seed):
         if p and _mindist_ok(i, j, found, MIN_D):
             found.append((i, j))
 
-    # 初始随机查 INIT_RANDOM 个
+    # Initially query INIT_RANDOM random points
     init_idx = rng.choice(N, size=INIT_RANDOM, replace=False)
     for idx in init_idx:
         if len(found) >= TARGET or oracle.query_count >= MAX_Q:
@@ -93,7 +93,7 @@ def run_gpucb(oracle, algo_seed):
 
     gp = None
     while oracle.query_count < MAX_Q and len(found) < TARGET:
-        # 训练 GP
+        # Train GP
         known = queried
         if known.sum() >= 5:
             Xtr = candidates[known]
@@ -108,15 +108,15 @@ def run_gpucb(oracle, algo_seed):
                 except Exception:
                     gp = None
 
-        # 在未查格上算 UCB
+        # Compute UCB on unqueried cells
         unqueried = ~queried
         if unqueried.sum() == 0:
-            break  # 降采样格全查完，停止
+            break  # All downsampled cells queried, stop
         if gp is not None and unqueried.sum() > 0:
             Xte = candidates[unqueried]
             mu, sigma = gp.predict(Xte, return_std=True)
             ucb = mu + KAPPA * sigma
-            # 避免选已发现点附近（min_dist）
+            # Avoid selecting near already-discovered points (min_dist)
             best = np.argmax(ucb)
             idx = np.where(unqueried)[0][best]
         else:
@@ -129,7 +129,7 @@ def run_gpucb(oracle, algo_seed):
 
 def main():
     t_all = time.time()
-    log("==== MC GP-UCB 基线（降采样 50x50）====")
+    log("==== MC GP-UCB baseline (downsampled 50x50)====")
     rows = []
     for ws in WORLD_SEEDS:
         oracle = MCGridOracle(world_seed=ws)
@@ -138,7 +138,7 @@ def main():
             rows.append([ws, ag, pts, qs])
             if len(rows) % 10 == 0:
                 avg = sum(r[2] for r in rows) / len(rows)
-                log(f"  gpucb 进度 {len(rows)}/{len(WORLD_SEEDS)*len(ALGO_SEEDS)}  均点={avg:.1f}")
+                log(f"  gpucb progress {len(rows)}/{len(WORLD_SEEDS)*len(ALGO_SEEDS)}  avg points={avg:.1f}")
 
     out = OUT / "baseline_mc_gpucb.csv"
     with open(out, "w", newline="", encoding="utf-8") as f:
@@ -149,8 +149,8 @@ def main():
     mp = sum(r[2] for r in rows) / len(rows)
     mq = sum(r[3] for r in rows) / len(rows)
     hit = sum(1 for r in rows if r[2] >= TARGET) / len(rows)
-    log(f"  gpucb  pts={mp:.2f}/{TARGET} q={mq:.0f} 达标率={hit*100:.0f}%  ({(time.time()-t_all)/60:.1f}min)")
-    log(f"==== 完成 -> {out}")
+    log(f"  gpucb  pts={mp:.2f}/{TARGET} q={mq:.0f}  hit rate={hit*100:.0f}%  ({(time.time()-t_all)/60:.1f}min)")
+    log(f"==== Done -> {out}")
 
 
 if __name__ == "__main__":

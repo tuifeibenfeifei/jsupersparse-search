@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""补跑代理增长微基准 + 汇总统计。"""
+"""Supplementary surrogate-growth micro-benchmark plus summary statistics."""
 import csv, statistics, sys, time
 from pathlib import Path
 ROOT = Path(r"C:\Users\19264\Desktop\deep-sea-exploration")

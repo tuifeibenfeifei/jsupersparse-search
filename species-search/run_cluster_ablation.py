@@ -8,8 +8,8 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""run_cluster_ablation.py — 只跑新增聚类感知配置（A9/A10）并合并进已有消融 CSV
-用法：python run_cluster_ablation.py <oracle_path> <species> <A_boxes> <B_boxes> [n_seeds]
+"""run_cluster_ablation.py - run only the new cluster-aware configs (A9/A10) and merge them into the existing ablation CSV.
+Usage: python run_cluster_ablation.py <oracle_path> <species> <A_boxes> <B_boxes> [n_seeds]
 """
 import csv
 import sys
@@ -82,7 +82,7 @@ def main():
 
     for cname, over in CONFIGS:
         if cname in existing:
-            print(f"  {cname} 已存在，跳过")
+            print(f"  {cname} already present, skipping")
             continue
         cfg = dict(BASE, **over)
         cfg["cov_indices"] = list(range(oracle.covs.shape[0]))
@@ -101,9 +101,9 @@ def main():
         summary_rows.append([cname, round(mean(pts), 2), round(mean(qrs), 0),
                              round(mean(covs), 0), round(100.0 * sum(duals) / n, 1),
                              round(100.0 * succ / n, 1)])
-        print(f"  {cname:26s} 点 {summary_rows[-1][1]:6.2f} | 查询 {summary_rows[-1][2]:6.0f} | "
-              f"覆盖 {summary_rows[-1][3]:6.0f} | 双集群 {summary_rows[-1][4]:5.1f}% | "
-              f"跑满 {summary_rows[-1][5]:5.1f}%")
+        print(f"  {cname:26s} pts {summary_rows[-1][1]:6.2f} | queries {summary_rows[-1][2]:6.0f} | "
+              f"covered {summary_rows[-1][3]:6.0f} | dual cluster {summary_rows[-1][4]:5.1f}% | "
+              f"target reached {summary_rows[-1][5]:5.1f}%")
 
     with open(OUT_DIR / f"ablation_species_{species}_detail.csv", "w",
               newline="", encoding="utf-8") as f:

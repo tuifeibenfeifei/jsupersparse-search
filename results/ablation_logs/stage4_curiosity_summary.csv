@@ -1,0 +1,4 @@
+﻿label,mean_points,std_points,mean_queries,std_queries,success_rate,target_reached_count,n_runs
+curiosity_weight=1,40.0,0.0,2083.25,818.9994123929516,1.0,400,400
+curiosity_weight=3,40.0,0.0,2044.475,731.7764852569398,1.0,400,400
+curiosity_weight=5,40.0,0.0,2048.12,780.6512829682663,1.0,400,400

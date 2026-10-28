@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""端到端墙钟成本对照：framework / GP-UCB / TuRBO，chlorophyll 与 minecraft 场景。
+"""End-to-end wall-clock cost comparison: framework / GP-UCB / TuRBO, chlorophyll and minecraft scenarios.
 
-代理增长微基准：n in {100,500,1000,2000,4000}，GP 单步重拟合 GPR + 预测 2000 候选取中位数。
-所有耗时用 time.perf_counter；数字来自实测或既有 CSV；增量写盘，断点不丢。
+Proxy growth micro-benchmark: n in {100,500,1000,2000,4000}, GP single-step refit GPR + predict 2000 candidates, median taken.
+All timings use time.perf_counter; numbers come from measurements or existing CSVs; incremental writing, no checkpoint loss.
 """
 import csv
 import math
@@ -33,8 +33,8 @@ PROXY_CSV = OUT / "peerj_proxy_growth.csv"
 LOG = OUT / "peerj_wallclock.log"
 
 SEEDS = list(range(101, 121))
-MC_WORLD_SEEDS = list(range(1, 11))   # 子集：10 worlds（任务允许，报告标注）
-RUN_WALL_WATCHDOG = 90.0               # 单 run 墙钟上限（秒），超过即中止并记录
+MC_WORLD_SEEDS = list(range(1, 11))   # Subset: 10 worlds (task allows, noted in report)
+RUN_WALL_WATCHDOG = 90.0               # Per-run wall-clock limit (seconds); abort and record when exceeded
 
 CHL_CFG = dict(
     target_points=20, max_queries=4000, min_dist_cells=1.0,
@@ -60,7 +60,7 @@ def log(msg):
 
 
 def write_rows(rows, mode="a"):
-    """增量写明细 CSV。"""
+    """Incrementally write detail CSV."""
     new = not DETAIL_CSV.exists() or mode == "w"
     with open(DETAIL_CSV, mode, newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=["scenario", "method", "world_seed", "algo_seed",
@@ -70,7 +70,7 @@ def write_rows(rows, mode="a"):
         w.writerows(rows)
 
 
-# CHL 实测
+# CHL measured
 
 def run_chl():
     rows = []
@@ -221,12 +221,12 @@ def run_mc_framework_existing():
                              points_found=int(r["points_found"]),
                              total_queries=int(r["total_queries"]),
                              wall_time_s=float(r["wall_time_s"])))
-    log(f"  mc/framework 读既有 CSV {len(rows)} runs")
+    log(f"  mc/framework read existing CSV {len(rows)} runs")
     return rows
 
 
 def run_mc_agents():
-    # Env 口径切到 MC
+    # Env settings switch to MC
     RC.TARGET = 40
     RC.MAX_Q = 10000
     RC.MIN_D = 2.0
@@ -255,11 +255,11 @@ def run_mc_agents():
             world_rows.append(dict(scenario="minecraft", method="turbo", world_seed=ws,
                                    algo_seed=s, points_found=r["points_found"],
                                    total_queries=r["total_queries"], wall_time_s=round(dt, 4)))
-        write_rows(world_rows)  # 增量落盘
+        write_rows(world_rows)  # Incremental write to disk
         log(f"  mc agents world_seed={ws} done (+{len(world_rows)} rows)")
 
 
-# 代理增长微基准
+# Proxy growth micro-benchmark
 
 def run_proxy_growth():
     from sklearn.gaussian_process import GaussianProcessRegressor
@@ -308,7 +308,7 @@ def run_proxy_growth():
     return rows
 
 
-# 主流程
+# Main flow
 
 def main():
     t_all = time.perf_counter()
@@ -316,24 +316,24 @@ def main():
         LOG.unlink()
     if DETAIL_CSV.exists():
         DETAIL_CSV.unlink()
-    log("=== PeerJ 端到端墙钟成本对照 ===")
+    log("=== PeerJ end-to-end wall-clock cost comparison ===")
 
-    log("[1/4] chlorophyll 三方法实测 20 seeds ...")
+    log("[1/4] chlorophyll three methods measured 20 seeds ...")
     chl_rows = run_chl()
     write_rows(chl_rows, mode="w")
 
-    log("[2/4] minecraft framework 读既有 CSV ...")
+    log("[2/4] minecraft framework read existing CSV ...")
     fw_rows = run_mc_framework_existing()
     write_rows(fw_rows)
 
-    log("[3/4] minecraft GP-UCB/TuRBO 实测 10 worlds x 20 seeds ...")
+    log("[3/4] minecraft GP-UCB/TuRBO measured 10 worlds x 20 seeds ...")
     run_mc_agents()
 
-    log("[4/4] 代理增长微基准 ...")
+    log("[4/4] Proxy growth micro-benchmark ...")
     run_proxy_growth()
 
     dt = time.perf_counter() - t_all
-    log(f"=== 全部完成 总耗时 {dt/60:.1f} min ===")
+    log(f"=== All done, total time {dt/60:.1f} min ===")
 
 
 if __name__ == "__main__":

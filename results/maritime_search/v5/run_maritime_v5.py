@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
-"""run_maritime_v4.py — 四轮：海上搜救 Stage1 先验聚焦（stage1_prior）冷启动验证。
+"""run_maritime_v4.py — fourth round: maritime search-and-rescue Stage1 prior-focus (stage1_prior) cold-start validation.
 
-- oracle：maritime-search/data/oracle.npz（150×150，600 预算，SAR 先验 = 协变量索引 8）。
-- 单进程串行（WORKERS=1）。3 变体 × 10 seeds(101-110)。
-- 变体：
-    prior_off       三轮原版 CFG（对照；应与 v3 baseline 逐点一致）
+- oracle: maritime-search/data/oracle.npz (150x150, 600 budget, SAR prior = covariate index 8).
+- single process, sequential (WORKERS=1). 3 variants x 10 seeds (101-110).
+- variants:
+    prior_off       third-round original CFG (control; should be point-for-point identical to the v3 baseline)
     prior_on        + stage1_prior=True, stage1_prior_cov=8
     prior_on_motion + stage1_prior + motion_extrapolation=True
-- 输出（本脚本所在 v4/ 目录）：per_seed.csv、summary.csv、progress.log。
+- outputs (in this script's v4/ directory): per_seed.csv, summary.csv, progress.log.
 """
 import csv
 import sys
@@ -57,7 +57,7 @@ def log(msg):
 
 
 def first_hit_q(conv):
-    """convergence: [(q, n_found, stage)...]；返回 n_found 首次 >=1 的 q（近似，每 100 采样）"""
+    """convergence: [(q, n_found, stage)...]; return the first q where n_found >= 1 (approximate, sampled every 100)"""
     for (q, n, st) in conv:
         if n >= 1:
             return q
@@ -68,7 +68,7 @@ def main():
     t0 = time.time()
     oracle = MaritimeOracle(NPZ)
     log(f"oracle {oracle.nrows}x{oracle.ncols} covs={oracle.covs.shape} "
-        f"R={oracle.R_km}km P0={oracle.P0_cell} 变体={list(VARIANTS)} seeds=101-110")
+        f"R={oracle.R_km}km P0={oracle.P0_cell} variants={list(VARIANTS)} seeds=101-110")
     for vname, cfg in VARIANTS.items():
         rows = []
         for seed in SEEDS:
@@ -107,7 +107,7 @@ def main():
         stg = [r["final_stage"] for r in rows]
         fhq = [r["first_hit_q"] for r in rows]
         log(f"[{vname}] mean pts={pts.mean():.2f} q={qs.mean():.0f} "
-            f"cov={cov.mean():.0f} stage2+ 数={sum(1 for s in stg if s >= 2)}/{len(stg)} "
+            f"cov={cov.mean():.0f} n_stage2plus={sum(1 for s in stg if s >= 2)}/{len(stg)} "
             f"fhq={fhq}")
 
     # summary.csv
@@ -125,7 +125,7 @@ def main():
             fhq = [int(r["first_hit_q"]) for r in rows]
             w.writerow([vname, len(rows), round(pts.mean(), 2), round(qs.mean(), 1),
                         round(cov.mean(), 0), sum(1 for s in stg if s >= 2), fhq])
-    log(f"[done] 总耗时 {time.time()-t0:.1f}s -> {HERE}")
+    log(f"[done] total time {time.time()-t0:.1f}s -> {HERE}")
 
 
 if __name__ == "__main__":

@@ -8,17 +8,17 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""run_mc_baselines.py — Minecraft 游戏场景：random/grid/hill_climb 三基线对比。
+"""run_mc_baselines.py — Minecraft game scenario: comparison of three baselines random/grid/hill_climb.
 
-口径（与框架 final_model.yaml 对齐）：
-  - 世界种子 1-20（与框架 run_final_model.py 默认 seeds 1-20 完全一致）。
-  - 每世界种子 × 每方法跑 5 次（algo_seed=101..105），共 20×5=100 次/方法。
-  - 目标 target=40 深海格，预算 max_queries=10000，min_dist_cells=2.0。
-  - grid_step 取 10（100x100 网格每 10 格扫一次，与框架 stage1 盲扫密度同量级）。
+Convention (aligned with the framework's final_model.yaml):
+  - world seeds 1-20 (identical to the framework's run_final_model.py default seeds 1-20).
+  - each world seed x each method run 5 times (algo_seed=101..105), 20x5=100 runs per method in total.
+  - target=40 deep-sea cells, budget max_queries=10000, min_dist_cells=2.0.
+  - grid_step=10 (the 100x100 grid is swept every 10 cells, same order of magnitude as the framework stage1 blind-sweep density).
 
-输出 results/minecraft_search/：
-  baseline_mc_<method>.csv   逐 run 明细
-  mc_baseline_summary.csv   方法汇总
+Outputs in results/minecraft_search/:
+  baseline_mc_<method>.csv   per-run details
+  mc_baseline_summary.csv   per-method summary
 """
 import csv
 import math
@@ -38,8 +38,8 @@ OUT = ROOT / "results" / "minecraft_search"
 OUT.mkdir(parents=True, exist_ok=True)
 LOG = OUT / "progress.log"
 
-WORLD_SEEDS = list(range(1, 21))          # 与框架对齐 1-20
-ALGO_SEEDS = list(range(101, 106))         # 每世界种子跑 5 次
+WORLD_SEEDS = list(range(1, 21))          # aligned with the framework, 1-20
+ALGO_SEEDS = list(range(101, 106))         # run 5 times per world seed
 TARGET = 40
 MAX_Q = 10000
 MIN_D = 2.0
@@ -78,7 +78,7 @@ def random_baseline(oracle, algo_seed):
 def grid_baseline(oracle, algo_seed):
     rng = random.Random(algo_seed)
     nrows, ncols = oracle.nrows, oracle.ncols
-    # 随机偏移起扫的规则网格
+    # regular grid with a random offset start
     off_i, off_j = rng.randrange(GRID_STEP), rng.randrange(GRID_STEP)
     found = []
     oracle.reset_counter()
@@ -145,7 +145,7 @@ METHODS = {"random": random_baseline, "grid": grid_baseline, "hill_climb": hill_
 def main():
     t_all = time.time()
     summary = []
-    log(f"==== Minecraft 深海(海底神殿)基线对比: world_seeds={WORLD_SEEDS[0]}-{WORLD_SEEDS[-1]} "
+    log(f"==== Minecraft deep-sea (ocean monument) baseline comparison: world_seeds={WORLD_SEEDS[0]}-{WORLD_SEEDS[-1]} "
         f"algo_seeds={ALGO_SEEDS} target={TARGET} budget={MAX_Q} grid_step={GRID_STEP}")
 
     for mkey, mfn in METHODS.items():
@@ -165,7 +165,7 @@ def main():
         mq = sum(r[3] for r in rows) / len(rows)
         hit = sum(1 for r in rows if r[2] >= TARGET) / len(rows)
         dt = time.time() - t0
-        log(f"  {mkey:11s} pts={mp:.2f}/{TARGET} q={mq:.0f} 达标率={hit*100:.0f}% ({dt:.1f}s)")
+        log(f"  {mkey:11s} pts={mp:.2f}/{TARGET} q={mq:.0f} hit_rate={hit*100:.0f}% ({dt:.1f}s)")
         summary.append([mkey, round(mp, 2), round(mq, 1), round(hit, 3),
                         min(r[2] for r in rows), max(r[2] for r in rows)])
 
@@ -173,7 +173,7 @@ def main():
         w = csv.writer(f)
         w.writerow(["method", "mean_points", "mean_queries", "hit_rate", "min_points", "max_points"])
         w.writerows(summary)
-    log(f"==== 完成 ({(time.time()-t_all)/60:.1f}min) -> {OUT}")
+    log(f"==== done ({(time.time()-t_all)/60:.1f}min) -> {OUT}")
 
 
 if __name__ == "__main__":

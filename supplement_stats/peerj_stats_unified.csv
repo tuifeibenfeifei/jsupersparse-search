@@ -1,13 +1,13 @@
 scenario,variant,metric,n_pairs,delta_mean,delta_sd,wilcoxon_p_onesided,cliff_delta,direction,sig_note
-chlorophyll,AUC_off,total_queries,20,209.05,220.287,1.9073486328125e-06,0.9,variant>full(off 更多),p<0.05 显著
-chlorophyll,AUC_off,points_found,20,0.0,0.0,1.0,0.0,无差异,n.s.（p>=0.05，方向仅作假设）
-chlorophyll,multicluster_off,total_queries,20,-637.8,207.051,9.5367431640625e-07,-1.0,variant<full(off 更少),p<0.05 显著
-chlorophyll,multicluster_off,points_found,20,0.0,0.0,1.0,0.0,无差异,n.s.（p>=0.05，方向仅作假设）
-clouded_leopard,AUC_off,total_queries,20,-281.65,1259.577,0.8413447460685429,-1.0,variant<full(off 更少),n.s.（p>=0.05，方向仅作假设）
-clouded_leopard,AUC_off,points_found,20,0.4,3.283,0.8819963695182336,0.2222,variant>full(off 更多),n.s.（p>=0.05，方向仅作假设）
-clouded_leopard,multicluster_off,total_queries,20,0.0,0.0,1.0,0.0,无差异,n.s.（p>=0.05，方向仅作假设）
-clouded_leopard,multicluster_off,points_found,20,-1.85,4.209,0.011135489479616392,-0.6,variant<full(off 更少),p<0.05 显著
-minecraft,AUC_off,total_queries,400,0.335,110.533,0.2779504277139644,0.0968,variant>full(off 更多),n.s.（p>=0.05，方向仅作假设）
-minecraft,AUC_off,points_found,400,-0.05,0.827,0.0628817493858078,-0.2195,variant<full(off 更少),n.s.（p>=0.05，方向仅作假设）
-minecraft,multicluster_off,total_queries,400,-1.555,132.35,0.18598298651424783,-0.1875,variant<full(off 更少),n.s.（p>=0.05，方向仅作假设）
-minecraft,multicluster_off,points_found,400,-0.065,0.82,0.07463549363675977,-0.1579,variant<full(off 更少),n.s.（p>=0.05，方向仅作假设）
+chlorophyll,AUC_off,total_queries,20,209.05,220.287,1.9073486328125e-06,0.9,variant>full (off more),p<0.05 significant
+chlorophyll,AUC_off,points_found,20,0.0,0.0,1.0,0.0,no difference,n.s. (p>=0.05; direction is hypothesis-only)
+chlorophyll,multicluster_off,total_queries,20,-637.8,207.051,9.5367431640625e-07,-1.0,variant<full (off fewer),p<0.05 significant
+chlorophyll,multicluster_off,points_found,20,0.0,0.0,1.0,0.0,no difference,n.s. (p>=0.05; direction is hypothesis-only)
+clouded_leopard,AUC_off,total_queries,20,-281.65,1259.577,0.8413447460685429,-1.0,variant<full (off fewer),n.s. (p>=0.05; direction is hypothesis-only)
+clouded_leopard,AUC_off,points_found,20,0.4,3.283,0.8819963695182336,0.2222,variant>full (off more),n.s. (p>=0.05; direction is hypothesis-only)
+clouded_leopard,multicluster_off,total_queries,20,0.0,0.0,1.0,0.0,no difference,n.s. (p>=0.05; direction is hypothesis-only)
+clouded_leopard,multicluster_off,points_found,20,-1.85,4.209,0.011135489479616392,-0.6,variant<full (off fewer),p<0.05 significant
+minecraft,AUC_off,total_queries,400,0.335,110.533,0.2779504277139644,0.0968,variant>full (off more),n.s. (p>=0.05; direction is hypothesis-only)
+minecraft,AUC_off,points_found,400,-0.05,0.827,0.0628817493858078,-0.2195,variant<full (off fewer),n.s. (p>=0.05; direction is hypothesis-only)
+minecraft,multicluster_off,total_queries,400,-1.555,132.35,0.18598298651424783,-0.1875,variant<full (off fewer),n.s. (p>=0.05; direction is hypothesis-only)
+minecraft,multicluster_off,points_found,400,-0.065,0.82,0.07463549363675977,-0.1579,variant<full (off fewer),n.s. (p>=0.05; direction is hypothesis-only)

@@ -8,14 +8,14 @@ for _ in range(8):
         break
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
-"""run_cross_scenario_ablation.py — 跨场景关键机制消融。
+"""run_cross_scenario_ablation.py — cross-scenario key-mechanism ablation.
 
-三个场景各跑 3 个配置（full / AUC_off / multicluster_off）：
-  - MC 深海: 20 world seeds x 20 algo seeds, oracle_npz
-  - 云豹: 1 oracle x 20 algo seeds
-  - 叶绿素: 1 oracle x 20 algo seeds
+Each of the three scenarios runs 3 configs (full / AUC_off / multicluster_off):
+  - MC deep sea: 20 world seeds x 20 algo seeds, oracle_npz
+  - clouded leopard: 1 oracle x 20 algo seeds
+  - chlorophyll: 1 oracle x 20 algo seeds
 
-输出 results/ablation_cross/ablation_detail.csv
+Output: results/ablation_cross/ablation_detail.csv
 """
 import csv
 import sys
@@ -46,7 +46,7 @@ def log(msg):
         f.write(line + "\n")
 
 
-# ---- 各场景 base cfg（与五轮最终配置对齐）----
+# ---- per-scenario base cfg (aligned with the fifth-round final config) ----
 MC_CFG = dict(
     target_points=40, max_queries=10000, min_dist_cells=2.0,
     stage2_min=3, stage3_min=5, stage3_jump_interval=30,
@@ -147,7 +147,7 @@ def run_scenario(scenario, variant, overrides):
 
 def main():
     t_all = time.time()
-    log("=== 跨场景消融: full / AUC_off / multicluster_off ===")
+    log("=== cross-scenario ablation: full / AUC_off / multicluster_off ===")
 
     all_rows = []
     for scenario, variant, overrides in CONFIGS:
@@ -160,7 +160,7 @@ def main():
                     "points_found", "total_queries"])
         w.writerows(all_rows)
 
-    # 汇总
+    # summary
     print("\n=== Cross-Scenario Ablation Summary (mean points) ===")
     for sc in ["minecraft", "clouded_leopard", "chlorophyll"]:
         print(f"\n[{sc}]")
@@ -168,7 +168,7 @@ def main():
             vals = [r[4] for r in all_rows if r[0] == sc and r[1] == v]
             print(f"  {v:18s} mean={sum(vals)/len(vals):.2f}  (n={len(vals)})")
 
-    log(f"=== 完成 -> {DETAIL} ({(time.time()-t_all)/60:.1f} min)")
+    log(f"=== done -> {DETAIL} ({(time.time()-t_all)/60:.1f} min)")
 
 
 if __name__ == "__main__":
