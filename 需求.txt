@@ -198,10 +198,32 @@ deep-sea-exploration/
 │   ├── generate_fig8.py                   # 论文 Figure 8（多场景覆盖对比图）绘制
 │   └── generate_graphical_abstract.py     # 论文 Graphical Abstract 绘制
 │
+├── minecraft-search/                      # 【场景】MC 深海群系：oracle 构建、框架/基线/GP-UCB/预算曲线
+├── species-search/                        # 【场景】黑麂 / 云豹：GBIF 真实分布 + WorldClim 协变量
+├── chlorophyll-search/                    # 【场景】叶绿素：ESA CCI 真实数据（fetch_chlorophyll.py 下载）
+├── ocean3d-search/                        # 【场景】3D 溶解氧：EMODnet 真实剖面（fetch_ocean3d.py 下载）
+├── drift-search/                          # 【场景】慢漂移 / 突变：合成时变目标
+├── maritime-search/                       # 【场景】海上搜救（情景A）+ 逆向漂移（情景C）
+├── pollution-search/                      # 【场景】污染溯源（情景B，物理仿真，探索性）
+├── mineral-search/                        # 【场景】矿化露头→矿体（情景D，合成地质模型，探索性）
+├── supplement_stats/                      # 统计补强：配对检验、敏感性、置换对照、seed 稳定性、PeerJ 修订实验
+├── graphical_abstract.png                 # 论文 Graphical Abstract（generate_graphical_abstract.py 输出）
+│
 ├── results/                               # 【实验成绩单】所有跑出来的数据都存这
-│   ├── ablation_logs/                     # 各阶段消融实验的日志和统计结果
-│   ├── baseline_logs/                     # 5个基线算法的运行日志
-│   └── final_logs/                        # 最终版模型的运行日志
+│   ├── ablation_logs/                     # 各阶段消融实验的日志和统计结果（Stage1-4 汇总 CSV + 对比图）
+│   ├── ablation_cross/                    # 跨场景机制转移矩阵（Table 14）的原始数据
+│   ├── baseline_logs/                     # 5个基线算法在深海主场景的运行日志
+│   ├── baseline_compare/                  # 多场景基线对比的 CSV 与柱状图
+│   ├── final_logs/                        # 最终版模型（40 点 / 10000 查询上限）的运行日志与收敛曲线
+│   ├── minecraft_search/                  # MC 场景：框架/基线/GP-UCB/预算曲线
+│   ├── species_search/                    # 黑麂 / 云豹：框架、消融、新旧算法对比
+│   ├── chl_search/                        # 叶绿素场景
+│   ├── ocean3d/                           # 3D 溶解氧场景
+│   ├── drift_search/                      # 慢漂移 / 突变场景
+│   ├── timevary_search/                   # 时变与非平稳补跑实验
+│   ├── maritime_search/                   # 海上搜救（情景A）与逆向漂移（情景C）
+│   ├── pollution_search/                  # 污染溯源（情景B，探索性，不入论文表格）
+│   └── mineral_search/                    # 矿化露头（情景D，探索性，不入论文表格）
 │
 ├── figures/                               # 【出图目录】论文图件统一输出到这（脚本首次运行自动创建）
 │   ├── Fig1_framework_architecture.png    # generate_fig1.py 输出
@@ -307,8 +329,11 @@ deep-sea-exploration/
      Mock 模式返回伪随机反馈，只用于跑通流程/自检，不能用于产出论文数据。
    - 其余 5 个跨领域场景（物种 species-search / 叶绿素 chlorophyll-search / 3D 溶解氧 ocean3d-search /
      漂移 drift-search / 海上搜救 maritime-search）为纯 Python，不依赖该 dll，可独立运行。
-     本地另有污染（pollution-search）、矿化（mineral-search）两个探索性场景目录，
-     未纳入本仓库分发（论文正文亦未使用其数据），故不列入上表。
+     另有污染（pollution-search）、矿化（mineral-search）两个探索性场景，
+     代码与结果均已随仓库分发，但**不属于论文的八场景评测**、不向正文任何表格提供数字：
+     pollution-search 用二维平流-扩散稳态高斯羽流做物理仿真（非真实监测数据），
+     mineral-search 是「地表露头 → 地下矿体」两阶段顺序解码任务。
+     两者入口见 README 的 Reproduction 一节。
 
 2. database.py
    职责：内存级数据存储，管理已发现的深海点。核心是实现欧氏距离校验逻辑（对应间距阈值）。
