@@ -1,0 +1,6 @@
+metric,mean,seed101,seed102,seed103
+points_found,15.0,15,15,15
+total_queries,150.3,186,125,140
+covered_cells,133.7,172,112,117
+trace_err_cells,15.8,7.81,24.331,15.264
+trace_err_km,7.9,3.9,12.17,7.63

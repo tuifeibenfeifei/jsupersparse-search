@@ -10,6 +10,8 @@ A model-free, multistage black-box online search framework that finds sparse tar
 
 The framework separates **covariate selection** (which covariates to trust) from **query scheduling** (where to query next) and measures how far each transfers across scenes. The paper reports seventeen mechanism-by-scene measurements: seven beneficial, five inert, and five harmful — covariate selection transfers across domains, query scheduling does not. The framework is evaluated on **eight scenarios**: Minecraft terrain, Tufted deer (Muntiacus crinifrons), Clouded leopard (Neofelis nebulosa), chlorophyll fields, 3D oxygen-poor nuclei, slow drift, mutation, and maritime search-and-rescue.
 
+The repository additionally ships two exploratory scenes that are **not** part of the paper's eight-scenario evaluation and supply no numbers to its tables: abrupt pollution-source tracing (`pollution-search/`) and a two-stage mineralized-outcrop search (`mineral-search/`). They are included because they exercise the same framework through an unfamiliar interface (a physics-simulated plume; a surface-to-subsurface sequential decoding task) and are documented here for completeness.
+
 ## Repository structure
 
 ```
@@ -22,6 +24,8 @@ chlorophyll-search/  Chlorophyll oracle (ESA CCI) and experiments
 ocean3d-search/      3D oxygen-nucleus oracle (EMODnet) and experiments
 drift-search/        Slow-drift and mutation oracles and experiments
 maritime-search/     Maritime search-and-rescue oracle and experiments
+pollution-search/    Abrupt pollution-source tracing oracle (physics simulation) and experiments
+mineral-search/      Two-stage mineralized-outcrop oracle (surface outcrops -> subsurface ore body) and experiments
 results/             Per-seed and summary CSV outputs behind the paper's tables and figures
 supplement_stats/    Paired tests, sensitivity sweeps, permutation controls, seed-stability and metric-robustness analyses, plus the PeerJ revision experiments (PEERJ_SUPPLEMENT.md, peerj_*.py/csv)
 ```
@@ -41,6 +45,8 @@ Raw third-party data are **not distributed** in this repository; download them a
 | Chlorophyll | ESA Ocean Colour CCI chlorophyll-a product | https://esa-oceancolour-cci.org; run `chlorophyll-search/fetch_chlorophyll.py` |
 | 3D oxygen | EMODnet "Dissolved oxygen and temperature on water column, data from the EGIM, EMSO-Canarias (ESTOC), 2020" | doi:10.17882/83639 (CC-BY 4.0); run `ocean3d-search/fetch_ocean3d.py` |
 | Slow drift / Mutation / Maritime SAR | Synthetic, code-generated | no external data required |
+| Abrupt pollution tracing | Synthetic advection-diffusion plume (physics simulation, not real monitoring data) | no external data required; run `pollution-search/build_pollution_oracle.py` |
+| Mineralized outcrop | Synthetic two-stage geological model (surface outcrops -> subsurface ore body) | no external data required; run `mineral-search/build_mineral_oracle.py` |
 
 ## Reproduction
 
@@ -52,6 +58,8 @@ Run each experiment from the repository root:
 - **3D oxygen** – `ocean3d-search/run_ocean3d.py`
 - **Slow drift / Mutation** – `drift-search/run_drift.py`
 - **Maritime** – `maritime-search/run_maritime.py`
+- **Abrupt pollution tracing** – `pollution-search/build_pollution_oracle.py` then `pollution-search/run_pollution.py`; figures via `pollution-search/make_pollution_plots.py`
+- **Mineralized outcrop** – `mineral-search/build_mineral_oracle.py` then `mineral-search/run_mineral.py`; figures via `mineral-search/plot_mineral.py`
 - **Baselines (all scenarios)** – `scripts/run_baselines.py`, `scripts/run_finder_showdown.py`
 - **Ablations** – `scripts/run_ablation_stage1.py` … `run_ablation_stage4.py`, `scripts/run_stages_parallel.py`
 - **Final configuration** – `scripts/run_final_model.py`

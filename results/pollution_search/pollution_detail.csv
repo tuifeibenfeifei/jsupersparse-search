@@ -1,0 +1,4 @@
+seed,points_found,total_queries,covered_cells,final_stage,upstream_i,upstream_j,trace_err_cells
+101,15,186,172,3,65,26,7.81
+102,15,125,112,3,64,44,24.331
+103,15,140,117,3,68,33,15.264

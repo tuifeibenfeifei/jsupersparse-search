@@ -1,0 +1,4 @@
+seed,A_points,A_queries,strike_hat,strike_err_deg,B_points,B_queries,B_on_structure,B_on_noise,AUC_predplane,top_cov,top_cov_name
+101,10,170,68.7,6.3,11,1500,0.545,0.455,0.943,1,dist_pred_plane
+102,10,440,75.0,0.0,20,496,1.0,0.0,1.0,1,dist_pred_plane
+103,10,140,75.3,0.3,4,1500,0.0,1.0,1.0,1,dist_pred_plane
