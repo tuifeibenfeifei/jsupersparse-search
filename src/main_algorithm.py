@@ -931,7 +931,18 @@ class DeepSeaExplorer:
         """
         Execute one complete search episode.
         Req. Sec. 15: this method only returns a result dict; 20 repeats / CSV / plots never happen in this file.
+
+        Note: the cubiomes generator must already be seeded with the *world* seed before this call.
+        Normally run_experiment() does that; calling this method directly on a freshly constructed
+        explorer would otherwise leave the DLL uninitialized, and the in-loop exception fallback would
+        swallow every query failure and keep spinning without ever advancing the query budget.
         """
+        if not self.cubiomes.is_mock and not self.cubiomes._initialized:
+            raise RuntimeError(
+                "run_single_episode() called before any world seed was applied: "
+                "call self.cubiomes.set_seed(world_seed) first, or use run_experiment()"
+            )
+
         self._algo_seed = seed
         self._reset_state()
         random.seed(seed)
