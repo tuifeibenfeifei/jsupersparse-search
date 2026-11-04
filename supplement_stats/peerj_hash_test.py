@@ -3,16 +3,27 @@
 import os
 import subprocess
 import sys
+from pathlib import Path
 
-PY = r"C:\Users\19264\AppData\Local\Programs\Python\Python39\python.exe"
-OUT = r"C:\Users\19264\Desktop\deep-sea-exploration\supplement_stats\peerj_hash_test.txt"
+PY = sys.executable
+
+REPO_ROOT = Path(__file__).resolve()
+while not (REPO_ROOT / "configs").is_dir():
+    if REPO_ROOT.parent == REPO_ROOT:
+        raise RuntimeError("repository root (containing configs/) not found")
+    REPO_ROOT = REPO_ROOT.parent
+ROOT = REPO_ROOT
+REPO_S = repr(str(ROOT / "species-search"))
+REPO_C = repr(str(ROOT / "chlorophyll-search"))
+ORACLE = repr(str(ROOT / "chlorophyll-search" / "data" / "oracle.npz"))
+OUT = str(Path(__file__).resolve().parent / "peerj_hash_test.txt")
 CODE = (
     "import sys;"
-    "sys.path.insert(0, r'C:\\Users\\19264\\Desktop\\deep-sea-exploration\\species-search');"
-    "sys.path.insert(0, r'C:\\Users\\19264\\Desktop\\deep-sea-exploration\\chlorophyll-search');"
+    "sys.path.insert(0, REPO_S);"
+    "sys.path.insert(0, REPO_C);"
     "from oracle import SpeciesOracle;"
     "from species_agent import SpeciesSearcher;"
-    "o = SpeciesOracle(r'C:\\Users\\19264\\Desktop\\deep-sea-exploration\\chlorophyll-search\\data\\oracle.npz');"
+    "o = SpeciesOracle(ORACLE);"
     "cfg = dict(target_points=20, max_queries=4000, min_dist_cells=1.0, stage2_min=3, stage3_min=5,"
     " stage3_jump_interval=30, stage3_jump_min_ratio=1.25, stage3_jump_max_ratio=5.0, curiosity_weight=1.0,"
     " learning_rate=0.1, discount_factor=0.95, epsilon_start=0.9, epsilon_end=0.1, epsilon_decay=0.999,"
@@ -27,6 +38,9 @@ with open(OUT, "w", encoding="utf-8") as f:
     for hs in ["0", "1", "2", "3", "4", "random", "random", "random"]:
         env = dict(os.environ)
         env["PYTHONHASHSEED"] = hs
-        r = subprocess.run([PY, "-c", CODE], capture_output=True, text=True, env=env, timeout=120)
+        code = (CODE.replace("REPO_S", REPO_S)
+                .replace("REPO_C", REPO_C)
+                .replace("ORACLE", ORACLE))
+        r = subprocess.run([PY, "-c", code], capture_output=True, text=True, env=env, timeout=120)
         f.write(f"hashseed={hs}: {r.stdout.strip()} (rc={r.returncode})\n")
 print("done ->", OUT)

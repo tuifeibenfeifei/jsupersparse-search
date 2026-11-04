@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 from scipy import stats
 
-HERE = Path(r"C:\Users\19264\Desktop\deep-sea-exploration\supplement_stats")
+HERE = Path(__file__).resolve().parent
 DETAIL = HERE / "peerj_2x2_detail.csv"
 REPORT = HERE / "peerj_2x2_matrix.md"
 

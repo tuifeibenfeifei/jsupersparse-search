@@ -16,7 +16,12 @@ from pathlib import Path
 import numpy as np
 from scipy import stats
 
-ROOT = Path(r"C:\Users\19264\Desktop\deep-sea-exploration")
+REPO_ROOT = Path(__file__).resolve()
+while not (REPO_ROOT / "configs").is_dir():
+    if REPO_ROOT.parent == REPO_ROOT:
+        raise RuntimeError("repository root (containing configs/) not found")
+    REPO_ROOT = REPO_ROOT.parent
+ROOT = REPO_ROOT
 HERE = ROOT / "supplement_stats"
 sys.path.insert(0, str(ROOT / "species-search"))
 sys.path.insert(0, str(ROOT / "chlorophyll-search"))

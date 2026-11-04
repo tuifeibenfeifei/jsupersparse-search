@@ -1,12 +1,20 @@
 # -*- coding: utf-8 -*-
 """Quick anchor check: reproduce MC world1 seeds 101-105 with current MC_CFG."""
 import sys
-sys.path.insert(0, r"C:\Users\19264\Desktop\deep-sea-exploration\species-search")
-sys.path.insert(0, r"C:\Users\19264\Desktop\deep-sea-exploration\chlorophyll-search")
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve()
+while not (REPO_ROOT / "configs").is_dir():
+    if REPO_ROOT.parent == REPO_ROOT:
+        raise RuntimeError("repository root (containing configs/) not found")
+    REPO_ROOT = REPO_ROOT.parent
+ROOT = REPO_ROOT
+sys.path.insert(0, str(ROOT / "species-search"))
+sys.path.insert(0, str(ROOT / "chlorophyll-search"))
 from oracle import SpeciesOracle
 from species_agent import SpeciesSearcher
 
-R = r"C:\Users\19264\Desktop\deep-sea-exploration"
+R = str(ROOT)
 o = SpeciesOracle(R + r"\minecraft-search\oracle_npz\mc_world_seed1.npz")
 MC_CFG = dict(target_points=40, max_queries=10000, min_dist_cells=2.0, stage2_min=3, stage3_min=5,
               stage3_jump_interval=30, stage3_jump_min_ratio=1.25, stage3_jump_max_ratio=5.0,

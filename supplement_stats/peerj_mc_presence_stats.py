@@ -1,10 +1,18 @@
 # -*- coding: utf-8 -*-
 """Compute MC presence stats across 20 worlds."""
 import sys
-sys.path.insert(0, r"C:\Users\19264\Desktop\deep-sea-exploration\species-search")
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve()
+while not (REPO_ROOT / "configs").is_dir():
+    if REPO_ROOT.parent == REPO_ROOT:
+        raise RuntimeError("repository root (containing configs/) not found")
+    REPO_ROOT = REPO_ROOT.parent
+ROOT = REPO_ROOT
+sys.path.insert(0, str(ROOT / "species-search"))
 from oracle import SpeciesOracle
 
-R = r"C:\Users\19264\Desktop\deep-sea-exploration"
+R = str(ROOT)
 vals = []
 for ws in range(1, 21):
     o = SpeciesOracle(R + rf"\minecraft-search\oracle_npz\mc_world_seed{ws}.npz")

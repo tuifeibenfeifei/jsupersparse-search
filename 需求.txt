@@ -1441,9 +1441,15 @@ MAP-Elites（它们一个是找最优值、一个是演化一堆个体，都不�
   优化）、TuRBO、Go-Explore、MAP-Elites、RND 新颖性搜索、自适应采样（GP 信息增益）。
 - 框架基线 = 各场景最优配置，复用既往结果不重跑：物种 params2 + A11 自适应；
   叶绿素 CHL5_params7 + CHL7_adaptive；3D O3D5_params7。
-- 产物：results/species_search/compare_oldnew/、results/chl_search/compare_oldnew/、
-  results/ocean3d/compare_oldnew/（summary/detail CSV + 对比图 PNG + compare_report.md；
-  新代码在各场景 compare_oldnew/ 目录，未改任何现有文件）。
+- 产物（运行时生成，非仓库跟踪内容）：results/species_search/compare_oldnew/、
+  results/chl_search/compare_oldnew/、results/ocean3d/compare_oldnew/（summary/detail
+  CSV + 对比图 PNG + compare_report.md）。
+- 代码位置：本实验的对比器实际只保留在 species-search/compare_oldnew/
+  （common.py / algos.py / run_compare.py / make_outputs.py），一套代码覆盖 12 种
+  对比算法；它按 --species 参数驱动黑麂与云豹，叶绿素与 3D 场景的同类对比结果
+  来自当时的运行记录，其专用对比器未随仓库分发。运行入口：
+  python species-search/compare_oldnew/run_compare.py（需先备好各场景 data/oracle.npz，
+  该数据目录被 .gitignore 排除，需按各场景 build_*_oracle.py 自行生成）。
 【结果要点】（目标点/平均查询/达标率；查询越少越快）
 - 叶绿素（target=20、预算 4000）：
   框架_CHL5_params7 11.30/2730.6/55% | 框架_CHL7_adaptive 11.30/2765.8/55% |
