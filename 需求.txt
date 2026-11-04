@@ -1005,6 +1005,9 @@ cubiomes.dll 是在巨人肩膀上，利用其查询坐标温度值和判定深�
 - make_plots.py       生成物种线可视化 PNG
 - fetch_occurrences.ps1 / fetch_snow_leopard.ps1  GBIF 拉取脚本
 - data/<subdir>/      occurrences.csv + oracle.npz（black_muntjac / clouded_leopard / worldclim）
+  注意：该目录因体积原因不随仓库分发（已写入 .gitignore），需自行下载 GBIF 记录与
+  WorldClim wc2.1_5m_bio 后运行 build_oracle.py 生成；缺失时 common.py 的 make_oracle()
+  会抛出 FileNotFoundError 并打印对应的重建命令。
 - results/            物种线图像输出（feature_selection_evolution.png、
   auto_selection_vs_baselines.png）
 
