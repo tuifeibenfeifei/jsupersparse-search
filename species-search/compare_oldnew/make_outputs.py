@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""make_outputs.py - aggregate the detail CSVs (including the framework baselines) into a summary, comparison figure and report.
+"""make_outputs.py - aggregate the detail CSVs (including the framework baselines) into a summary CSV and a comparison figure.
 Framework baselines: per-seed CSVs from params2 + the A11 adaptive mean row (existing results, not re-run).
 """
 from __future__ import annotations

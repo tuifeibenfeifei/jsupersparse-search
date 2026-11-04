@@ -1442,7 +1442,8 @@ MAP-Elites（它们一个是找最优值、一个是演化一堆个体，都不�
 - 框架基线 = 各场景最优配置，复用既往结果不重跑：物种 params2 + A11 自适应；
   叶绿素 CHL5_params7 + CHL7_adaptive；3D O3D5_params7。
 - 产物位置（注意各场景路径不同）：物种场景在 results/species_search/compare_oldnew/
-  （summary/detail CSV + 对比图 PNG + compare_report.md）；叶绿素场景的对比产物直接
+  （compare_summary_{species}.csv + compare_detail_{species}.csv + compare_{species}.png）；
+  叶绿素场景的对比产物直接
   落在 results/chl_search/ 下的 chl_detail.csv 与 chl_summary.csv；3D 溶解氧场景直接
   落在 results/ocean3d/ 下的 o3d_detail.csv、o3d_summary.csv 与 o3d_comparison.png、
   o3d_param_effect.png（后两者不另建 compare_oldnew 子目录）。
