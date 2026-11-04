@@ -67,7 +67,14 @@ def load_framework(species):
 
 
 def build(species):
-    det = pd.read_csv(OUT / f"compare_detail_{species}_full.csv")
+    detp = OUT / f"compare_detail_{species}_full.csv"
+    if not detp.exists():
+        raise FileNotFoundError(
+            f"detail CSV not found: {detp}\n"
+            "Run the comparison first, which needs the black-box oracle under species-search/data/:\n"
+            f"  python species-search/compare_oldnew/run_compare.py --species {species}"
+        )
+    det = pd.read_csv(detp)
     # mean of the algorithms we ran
     g = det.groupby("algo").agg(
         mean_points=("points_found", "mean"),

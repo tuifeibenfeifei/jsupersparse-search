@@ -31,7 +31,18 @@ SEEDS = list(range(101, 121))  # 20 seeds
 
 
 def make_oracle(species: str) -> SpeciesOracle:
-    return SpeciesOracle(ORACLE_PATHS[species])
+    """Load the black-box oracle, failing with the build command if data/ is absent."""
+    p = ORACLE_PATHS[species]
+    if not p.exists():
+        raise FileNotFoundError(
+            f"oracle not found: {p}\n"
+            "The data/ directory is not distributed with the repository. Rebuild it with:\n"
+            "  python species-search/build_oracle.py "
+            + (f"{species} 117.5 119.5 27.5 30.5 0.025 5000" if species == "black_muntjac"
+               else f"{species} 84 99 25 30 0.05 5000")
+            + "\nwhich needs data/<species>/occurrences.csv and data/worldclim/wc2.1_5m_bio/."
+        )
+    return SpeciesOracle(p)
 
 
 # ---------------------------------------------------------------------------
