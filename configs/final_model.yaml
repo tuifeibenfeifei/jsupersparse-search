@@ -5,7 +5,7 @@
 #   · Stage1 optimal perception: micro_strategy=center_point + temperature not in Q state, used only as guidance bias
 #   · Stage2 comparison winner: chunk_finder=grid_scan (focused ray_scan vs grid_scan head-to-head,
 #     20 world seeds x 20 repeats = 400 runs per strategy, both reach 40/40 points in 400/400 runs;
-#     grid_scan 2926.5 mean queries vs ray_scan 3154.1, i.e. 7.2% fewer queries, so grid_scan is adopted)
+#     grid_scan 2054.8 mean queries vs ray_scan 2409.3, i.e. 14.7% fewer queries, so grid_scan is adopted)
 #   · Stage3 baseline: all rewards enabled (deep-sea +10 / curiosity +3×1.0 weight unchanged / penalty -10, -5)
 #   · Global limits: 40 deep-sea points + 10000 query cap (user-specified; no longer determined by Stage4)
 # ==============================================================================

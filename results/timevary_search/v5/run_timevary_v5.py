@@ -86,6 +86,14 @@ def dump_featurelog(scene, variant, seed, feat):
 
 def main():
     t0 = time.time()
+    # Truncate the per-seed files first: append_per_seed() opens them in append
+    # mode, so a rerun would silently stack a second batch of rows on top of the
+    # previous one and corrupt summary.csv. Each variant must start empty.
+    for scene_name in SCENES:
+        for variant in SCENES[scene_name]["variants"]:
+            p = HERE / ("per_seed_%s_%s.csv" % (scene_name, variant))
+            if p.exists():
+                p.unlink()
     for scene_name, scene_cfg in SCENES.items():
         for variant, cfg in scene_cfg["variants"].items():
             for seed in SEEDS:

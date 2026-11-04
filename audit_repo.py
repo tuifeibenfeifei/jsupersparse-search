@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
-"""audit_repo.py — 可复现的仓库/文档一致性审计。
+"""audit_repo.py — reproducible repository/documentation consistency audit.
 
-用法（在仓库根目录执行）：
+Usage (run from the repository root):
     python audit_repo.py
 
-输出：
-    1) 所有受跟踪代码文件是否编译通过
-    2) 受跟踪代码里是否残留中文（仓库规范要求为 0）
-    3) 需求.txt 里引用的每个文件路径是否真实存在
-    4) supplement_stats 下每个脚本的 REPO_ROOT 是否解析到仓库根
-    5) 需求.txt 里引用的关键数值是否能在结果 CSV 中找到
+Checks:
+    1) every tracked code file compiles
+    2) no CJK characters remain in tracked code (repository rule: must be 0)
+    3) every file path referenced by 需求.txt exists
+    4) each supplement_stats script resolves REPO_ROOT to the repository root
+    5) key figures quoted in 需求.txt match the result CSVs
 
-任何一项不通过都会以 [FAIL] 标出，脚本退出码非 0。
+Any failure is reported as [FAIL] and the process exits non-zero.
 """
 from __future__ import annotations
 
@@ -67,11 +67,15 @@ def check_compile(files):
 def check_cjk(files):
     section("2) tracked code free of CJK")
     exts = (".py", ".yaml", ".yml", ".sh", ".json")
+    # This audit script must quote 需求.txt verbatim (its file name, section
+    # anchors and figure snippets), so the CJK it contains is data required to
+    # match the document, not prose. Every other tracked code file must be 0.
+    exempt = {"audit_repo.py"}
     code = [f for f in files if f.endswith(exts)]
     bad = []
     for f in code:
         p = ROOT / f
-        if not p.exists():
+        if f in exempt or not p.exists():
             continue
         txt = io.open(p, encoding="utf-8", errors="ignore").read()
         n = sum(1 for c in txt if "\u4e00" <= c <= "\u9fff")
@@ -87,7 +91,8 @@ def check_cjk(files):
 
 PATH_RE = re.compile(r"[A-Za-z0-9_\-./\\]+\.(?:py|csv|txt|yaml|yml|json|npz|png|md|sh|dll)")
 
-# 文档里合法出现、但本来就不在仓库里的路径，逐条写明理由。
+# Paths that legitimately appear in the document but do not live in the repo,
+# each with the reason it is exempt.
 KNOWN_NONREPO = {
     "cubiomes.dll": "external binary, excluded by .gitignore (src/cubiomes.dll)",
     "data/oracle.npz": "generated data, data/ is gitignored (built by build_*_oracle.py)",
@@ -104,11 +109,13 @@ KNOWN_NONREPO = {
 
 
 def check_doc_paths(files):
-    """需求.txt 引用路径核查。
+    """Check the paths referenced by 需求.txt.
 
-    文档里的路径多数是相对各自所在目录写的（例如 run_chl.py 实际在
-    chlorophyll-search/ 下），因此判定规则是：完整路径存在，或仓库中任意
-    位置存在同名文件，都算通过。只有两者都不满足才算真缺失。
+    Most paths in the document are written relative to the directory they live
+    in (for example run_chl.py actually sits under chlorophyll-search/), so a
+    reference passes if the full path exists OR a file with the same basename
+    exists anywhere in the repository. Only a reference satisfying neither is
+    treated as genuinely missing.
     """
     section("3) every path referenced by 需求.txt resolves to a real file")
     docp = ROOT / "需求.txt"
@@ -140,8 +147,9 @@ def check_doc_paths(files):
         else:
             missing.append((p, c))
 
-    # 无法解析的引用必须逐条给出理由，否则算失败。这样每条豁免都可追溯，
-    # 而不是笼统地「全部忽略」。
+    # Every unresolved reference must carry an explicit documented reason,
+    # otherwise it counts as a failure. This keeps each exemption traceable
+    # instead of silently ignoring the whole category.
     unclassified = []
     print(f"distinct file paths referenced: {len(seen)}")
     print(f"  resolved exactly            : {exact}")
@@ -160,12 +168,14 @@ def check_doc_paths(files):
 
 
 def check_repo_root():
-    """静态核查 supplement_stats 脚本的 REPO_ROOT 解析。
+    """Statically check the REPO_ROOT resolution in supplement_stats scripts.
 
-    不执行脚本（执行会产生副作用，例如 mc_paired_audit.py 会把统计结果
-    打印出来）。改为按脚本自身的解析逻辑在内存里模拟：
-    从脚本所在目录逐级向上，找到含 configs/ 的目录即为仓库根。
-    同时确认脚本带有「找不到就报错」的守卫，避免静默落到错误目录。
+    The scripts are not executed (that would have side effects: for example
+    importing mc_paired_audit.py prints statistical results). Instead their own
+    resolution logic is simulated in memory: walk up from the script directory
+    until a directory containing configs/ is found, which is the repo root.
+    Also confirms each script has a "raise if not found" guard so it cannot
+    silently fall back to a wrong directory.
     """
     section("4) supplement_stats REPO_ROOT resolution (static)")
     d = ROOT / "supplement_stats"
@@ -182,7 +192,7 @@ def check_repo_root():
             continue
         checked += 1
 
-        # 模拟：从脚本目录向上找 configs/
+        # simulate: walk up from the script directory looking for configs/
         p = f.parent
         found = None
         while True:
@@ -209,9 +219,10 @@ def check_repo_root():
         print("  all resolve to the repository root and fail loudly on failure")
 
 
-# 每条断言对应的「文档内定位锚点」：每对 (配置名, 该行应带的数字)。
-# 凡是同一行同时出现这两个词的，就是文档在陈述该配置的数值，
-# 该行必须带着正确数字，否则说明文档写错了。
+# Document anchors for each claim: each entry is (config name, the figure the
+# line is expected to carry). Any single line containing both tokens is taken
+# as the document stating that configuration's figure, so that line must carry
+# the correct number or the document is wrong.
 ANCHORS = {
     "final model mean queries": ["final_model", "最终版"],
     "stage2 grid_scan queries": ["grid_scan"],
@@ -224,7 +235,7 @@ ANCHORS = {
 
 
 def _num_close(a, b, tol=0.06):
-    """比较两个数字是否在容差内相等（对数级差异也算不等）。"""
+    """True when two numbers agree within tol (orders of magnitude count as not equal)."""
     try:
         fa = float(a)
     except (TypeError, ValueError):
@@ -233,11 +244,12 @@ def _num_close(a, b, tol=0.06):
 
 
 def check_doc_numbers():
-    """把 需求.txt 里的关键数值断言与结果 CSV 逐条对账。
+    """Compare every key figure in 需求.txt against the result CSVs.
 
-    每条断言 = (说明, CSV 路径, 配置列, 配置值, 指标列, 文档中应逐字出现的片段)。
-    片段是精确文本，因此文档里只要有一处把数字写错、或整段话被删掉，
-    这一项就会失败——不会因为别处恰好出现正确数字而蒙混过关。
+    Each claim is (label, CSV path, key column, key value, metric column,
+    snippet that must appear verbatim in the document). Because the snippet is
+    exact text, one wrong figure -- or the whole sentence being deleted --
+    fails the claim; a correct number appearing elsewhere cannot mask it.
     """
     section("5) 需求.txt key figures vs result CSVs")
     import csv
@@ -278,10 +290,11 @@ def check_doc_numbers():
             continue
 
         val = float(row[metric])
-        # 文档里必须逐字出现声明的片段
+        # the snippet must appear verbatim in the document
         present = snippet in doc
-        # 片段中代表该指标的数字（取 >20 的候选，避开配置名里的序号），
-        # 必须有一个与 CSV 值吻合（容忍四舍五入与千分位逗号）
+        # the figure that represents this metric inside the snippet (candidates
+        # above 20, so configuration indices are skipped) must agree with the
+        # CSV value, tolerating rounding and thousands separators
         nums = [n.replace(",", "") for n in re.findall(r"\d+(?:,\d{3})*(?:\.\d+)?", snippet)]
         cands = [float(n) for n in nums if float(n) > 20]
         num_ok = any(_num_close(c, val, tol=0.6) for c in cands) if cands else True
@@ -303,10 +316,11 @@ def check_doc_numbers():
 
 
 def self_test():
-    """验证审计确实会失败：注入一个已知错误，确认 audit 报 FAIL，然后还原。
+    """Prove the audit can fail: inject a known error, confirm it is caught, restore.
 
-    这一步很关键。只看到 RESULT: PASS 并不能说明审计有效——一个永远
-    返回 PASS 的检查毫无价值。这里通过注入错误证明它真的在检查。
+    This step matters. Seeing RESULT: PASS alone does not show the audit works;
+    a check that always passes is worthless. The injected fault proves it is
+    really inspecting the document.
     """
     section("SELF-TEST: does this audit actually detect a fault?")
     docp = ROOT / "需求.txt"

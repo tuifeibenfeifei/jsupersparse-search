@@ -18,7 +18,7 @@ from pathlib import Path
 import numpy as np
 
 ROOT = Path(REPO_ROOT)
-sys.path.insert(0, str(SNAP))                       # snapshot species-search
+sys.path.insert(0, str(ROOT / "species-search"))     # shared species-search
 sys.path.insert(1, str(ROOT / "maritime-search"))
 
 from species_agent import SpeciesSearcher          # noqa: E402
