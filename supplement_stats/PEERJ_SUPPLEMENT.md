@@ -12,10 +12,10 @@ direction in the data, not an established effect.
 
 Recomputes the paper's paired comparisons from existing CSVs (no experiments rerun):
 
-- Chlorophyll: AUC screen off costs +209.05 queries (p = 1.9e-6, Cliff's delta = +0.900);
-  multicluster off saves −637.80 queries (p = 9.5e-7, delta = −1.000). Both saturate at
+- Chlorophyll: AUC screen off costs +209.05 queries (p = 1.9e-6, Cliff's delta = −0.450);
+  multicluster off saves 637.80 queries (p = 9.5e-7, delta = +0.655). Both saturate at
   20/20 points in every seed.
-- Clouded leopard: multicluster off loses −1.85 points (p = 0.011, delta = −0.600);
+- Clouded leopard: multicluster off loses 1.85 points (p = 0.011, delta = +0.372);
   AUC off is n.s. (direction only).
 - Minecraft (400 paired runs): all contrasts n.s. (worst p = 0.063, direction only).
 - Selection precision 0.763 vs chance 0.368: a pooled Wilson 95% CI computed from the

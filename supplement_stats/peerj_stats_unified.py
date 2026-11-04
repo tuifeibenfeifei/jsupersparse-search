@@ -41,15 +41,20 @@ def load_ablation():
 
 
 def cliff_delta(a, b):
-    """Cliff's delta on paired diff d=a-b: P(d>0)-P(d<0) over non-ties."""
-    a, b = np.asarray(a), np.asarray(b)
-    d = a - b
-    n_pos = int(np.sum(d > 0))
-    n_neg = int(np.sum(d < 0))
-    n_nonzero = n_pos + n_neg
-    if n_nonzero == 0:
-        return 0.0
-    return (n_pos - n_neg) / n_nonzero
+    """Unpaired Cliff's delta, delta = P(a > b) - P(a < b), the same estimator used by
+    final_stats.py and reported in the manuscript.
+
+    This is the classic cross-product form. An earlier variant of this script used the
+    paired-dominance ratio (P(d>0) - P(d<0) over non-ties), which disagrees with the rest
+    of the paper (e.g. +1.000 instead of +0.655 for full vs multicluster off); all effect
+    sizes in the supplement are now on the manuscript's convention.
+    """
+    a, b = np.asarray(a, float), np.asarray(b, float)
+    n, m = len(a), len(b)
+    if n == 0 or m == 0:
+        return float("nan")
+    sgn = sum(np.sum(b < x) - np.sum(b > x) for x in a)
+    return sgn / (n * m)
 
 
 def paired_compare(rows, scenario, variant, metric):
@@ -66,8 +71,10 @@ def paired_compare(rows, scenario, variant, metric):
         elif r["variant"] == variant:
             var[k] = r[metric]
     keys = sorted(set(full) & set(var))
-    d = np.array([var[k] - full[k] for k in keys], dtype=float)
-    return d, keys
+    a_full = np.array([full[k] for k in keys], dtype=float)
+    b_var = np.array([var[k] for k in keys], dtype=float)
+    d = b_var - a_full
+    return d, keys, a_full, b_var
 
 
 def one_sided_wilcoxon(d, alternative):
@@ -118,10 +125,12 @@ def main():
     for scenario in ["chlorophyll", "clouded_leopard", "minecraft"]:
         for variant in ["AUC_off", "multicluster_off"]:
             for metric in ["total_queries", "points_found"]:
-                d, keys = paired_compare(rows, scenario, variant, metric)
+                d, keys, a_full, b_var = paired_compare(rows, scenario, variant, metric)
                 alt = spec[variant][metric]
                 p = one_sided_wilcoxon(d, alt)
-                cd = cliff_delta(d, np.zeros_like(d))
+                # Effect size on the manuscript's orientation (full vs variant), matching
+                # final_stats.csv and every Cliff's delta reported in the paper.
+                cd = cliff_delta(a_full, b_var)
                 dm, ds = float(np.mean(d)), float(np.std(d, ddof=1)) if len(d) > 1 else 0.0
                 if dm > 0:
                     direction = "variant>full(off more)"
