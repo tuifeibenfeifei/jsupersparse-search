@@ -2,9 +2,9 @@
 import os
 from pathlib import Path
 REPO_ROOT = Path(__file__).resolve()
-for _ in range(8):
-    if (REPO_ROOT / 'configs').is_dir():
-        break
+while not (REPO_ROOT / "configs").is_dir():
+    if REPO_ROOT.parent == REPO_ROOT:
+        raise RuntimeError("repository root (containing configs/) not found")
     REPO_ROOT = REPO_ROOT.parent
 """Metric-robustness re-ranking: replace "points found" with "queries / covered cells" as the ranking metric, and check whether the ranking flips.
 
