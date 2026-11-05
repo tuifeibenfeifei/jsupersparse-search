@@ -9,8 +9,16 @@ while not (REPO_ROOT / "configs").is_dir():
 """Supplementary run of the TABLE XIV sensitivity scans (seeds 101-110, n=10).
 
 coverage_budget_ratio: 0.05 / 0.08 / 0.12(default) / 0.20 / 0.30;
-weak_signal_min_auc: 0.50 / 0.53 / 0.52(default) / 0.55 / 0.60 / 0.70.
+weak_signal_min_auc: 0.50 / 0.52 / 0.53 / 0.55(shipped) / 0.60 / 0.70.
 Output: supplement_stats/chl_sensitivity_scan.csv (mean queries + change vs default).
+
+Note on the AUC threshold rows. When the published snapshot of
+chl_sensitivity_scan.csv was produced, the screening step compared the covariate AUC
+against a literal 0.55, so the weak_signal_min_auc key reached no comparison and all six
+rows of the scan describe that single threshold. species_agent.py now routes the key
+into the comparison and defaults it to 0.55, so the shipped behaviour is unchanged and
+the key is no longer inert; the committed CSV keeps the label 0.12 / 0.52 of the run that
+generated it, and regenerating it here will write 0.12 / 0.55 instead.
 """
 import csv
 import sys
@@ -71,13 +79,13 @@ def main():
     oracle = SpeciesOracle(ORACLE_PATH)
     t0 = time.time()
 
-    # default row (shipped: coverage 0.12, auc 0.52)
+    # default row (shipped: coverage 0.12, auc 0.55)
     default_q = run(dict(CHL_BASE), SEEDS)
     def_mean = sum(default_q) / len(default_q)
-    log(f"default (cov=0.12, auc=0.52) mean={def_mean:.1f} (n={len(default_q)})")
+    log(f"default (cov=0.12, auc=0.55) mean={def_mean:.1f} (n={len(default_q)})")
 
     rows = []
-    rows.append(dict(param="default", value="0.12 / 0.52", mean_q=round(def_mean, 1),
+    rows.append(dict(param="default", value="0.12 / 0.55", mean_q=round(def_mean, 1),
                      change_pct="—", n=len(default_q)))
 
     # coverage_budget_ratio scan (auc held at 0.52)
@@ -92,9 +100,9 @@ def main():
                          mean_q=round(m, 1), change_pct=round(chg, 1), n=len(qs)))
         log(f"coverage_budget_ratio={v} mean={m:.1f} chg={chg:+.1f}%")
 
-    # weak_signal_min_auc scan (coverage held at 0.12)
+    # weak_signal_min_auc scan (coverage held at 0.12); 0.55 is the shipped default
     for v in AUC_VALUES:
-        if v == 0.52:
+        if v == 0.55:
             continue
         cfg = dict(CHL_BASE, weak_signal_min_auc=v)
         qs = run(cfg, SEEDS)

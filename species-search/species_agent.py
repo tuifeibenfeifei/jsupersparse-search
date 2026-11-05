@@ -86,7 +86,9 @@ class SpeciesSearcher:
         self.stage1_prior_cov = int(config.get("stage1_prior_cov", 8))
         # round-4 M3: high-dimensional weak-signal weighting (default False)
         self.weak_signal_boost = bool(config.get("weak_signal_boost", False))
-        self.weak_signal_min_auc = float(config.get("weak_signal_min_auc", 0.52))
+        # The default equals the threshold the screening step used to hard-code, so the
+        # shipped behaviour is unchanged; the parameter now actually reaches that step.
+        self.weak_signal_min_auc = float(config.get("weak_signal_min_auc", 0.55))
         # round-5 M4: follow mode (default False; off is bitwise equivalent to round 4)
         self.follow_mode = bool(config.get("follow_mode", False))
         self.follow_window = int(config.get("follow_window", 24))
@@ -363,7 +365,7 @@ class SpeciesSearcher:
                     else:
                         auc_w[k] = self._auc(covs[pos_idx, k], covs[neg_idx, k])
                 ranked_a = sorted(auc_w.items(), key=lambda x: -x[1])[:topk]
-                # 3) keep only significant variables; weight = (AUC-0.5)^2 * 4 (soft sparsification: weak signals near zero)
+                # 3) keep only variables whose AUC clears weak_signal_min_auc (default 0.55); weight = (AUC-0.5)^2 * 4
                 if self.weak_signal_boost:
                     keep = {}
                     for k, w in ranked_a:
@@ -372,7 +374,8 @@ class SpeciesSearcher:
                         elif w > self.weak_signal_min_auc:
                             keep[k] = max(w - 0.5, 0.0) * 2.0
                 else:
-                    keep = {k: max(w - 0.5, 0.0) ** 2 * 4.0 for k, w in ranked_a if w > 0.55}
+                    keep = {k: max(w - 0.5, 0.0) ** 2 * 4.0 for k, w in ranked_a
+                            if w > self.weak_signal_min_auc}
                 if keep:
                     raw_w = keep
                 # conservative fallback: if no significant variable (extreme samples), keep top1 so guidance never fully dies

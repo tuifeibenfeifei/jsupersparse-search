@@ -10,7 +10,7 @@ for _ in range(8):
 # --------------------------------------
 """build_chlor_oracle.py — Build chlorophyll experiment Oracle
 - Target field: real ESA CCI chlorophyll (Bay of Bengal 2024-06 monthly mean, 241x241 @0.04°)
-  presence = chlor > p99.5 (270 high-chlorophyll hotspots)
+  presence = chlor > p99.5 (291 high-chlorophyll hotspots; the script prints the exact count)
 - Covariates (19, synthesized from physical laws, transparently annotated):
   7 structural parameters: sst_neg (SST negatively correlated with chlorophyll/upwelling), sss (weakly negative correlation with chlorophyll/estuarine low salinity),
     depth (shallow north/deep south geometry), par (PAR positive correlation/photosynthesis), wind (wind positive correlation/upwelling),

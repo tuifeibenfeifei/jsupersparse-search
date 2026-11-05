@@ -12,7 +12,7 @@ for _ in range(8):
 data: real CCI chlorophyll (Bay of Bengal, 2024-06), presence=291 high-chlorophyll hotspots (>p99.5)
 covariates: 7 structural parameters (sst_neg/sss/depth/par/wind/mld/coast_dist, synthesized from physical laws)
        + 12 noise parameters (noise1-12) = 19-parameter pool
-configs (20 seeds, target=20, budget 20000):
+configs (20 seeds, target=20, budget 4000):
   CHL0_skeleton  no guidance/no sparsity/no curiosity (skeleton)
   CHL1_full19    v1 full 19-parameter guidance
   CHL2_sparse    v2 AUC sparsity (automatic feature selection)

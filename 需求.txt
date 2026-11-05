@@ -1706,7 +1706,7 @@ Go-Explore、MAP-Elites、好奇搜索（RND）、自适应采样。结果必须
 ## 三十、框架四轮优化（突变检测·Stage1 先验聚焦·弱信号加权）与验证
 
 【结果要点】
-1. 三项机制落地（全默认关，默认行为=三轮原版逐点等价）：M1 突变检测+空窗压缩（5 键：mutation_detect/mutation_streak_thresh=40/mutation_accel=2.0/mutation_ramp=40/mutation_auto_motion）、M2 Stage1 先验聚焦（stage1_prior + stage1_prior_cov=8）、M3 弱信号加权（weak_signal_boost + weak_signal_min_auc=0.52）。实现后与修复后各跑等价冒烟（黑麂 sparse seed101=20/18835）均 PASS；默认关全量 9 配置×20 seeds=**180 对照 mismatch=0**（防反噬护栏①全绿）。
+1. 三项机制落地（全默认关，默认行为=三轮原版逐点等价）：M1 突变检测+空窗压缩（5 键：mutation_detect/mutation_streak_thresh=40/mutation_accel=2.0/mutation_ramp=40/mutation_auto_motion）、M2 Stage1 先验聚焦（stage1_prior + stage1_prior_cov=8）、M3 弱信号加权（weak_signal_boost + weak_signal_min_auc=0.55，默认值与筛选步原先硬编码的门限相同，故行为不变；该键现在真正传入筛选步）。实现后与修复后各跑等价冒烟（黑麂 sparse seed101=20/18835）均 PASS；默认关全量 9 配置×20 seeds=**180 对照 mismatch=0**（防反噬护栏①全绿）。
 2. 时变重测（10 seeds 101-110，results\timevary_search\v4\，验收核心）：
    - 突变 abrupt_jump：三轮 decay300=18.9(70%) / decaymotion=19.2(80%)；四轮解耦版 **fix_motion=19.3(80%,q1267)**、**fix mild=19.6(70%)**——双过"≥19 或 gap≤1"验收线（gap 0.7/0.4）；首版（全局加速、AUC 选参耦合）仅 18.0 反低于基线、激进参数 thresh30/accel3 仅 16.1。
    - 慢漂移 moving_plume：fix 默认 / fix_motion 保持 20.0(100%) 不倒退，fix_motion q=785 还快于 decay300 的 q=893；mild 有 seed110=16 单点滑落（如实点名）。

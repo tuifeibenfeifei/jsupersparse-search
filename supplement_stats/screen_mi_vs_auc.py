@@ -26,7 +26,11 @@ TRUE_IDS = list(range(7))          # sst_neg..coast_dist are true signals
 N_NOISE = 12
 SAMPLE_SIZES = [100, 250, 500, 1000, 2000, 4000, 6000]
 SAMPLING_SEEDS = [101, 102, 103, 104, 105]
-WEAK_SIG_MIN_AUC = 0.52            # framework default (species_agent.py weak_signal_min_auc)
+WEAK_SIG_MIN_AUC = 0.52            # fixed for the controlled screen experiment; the published
+                                  # precision/recall of PEERJ_SUPPLEMENT.md were produced with it.
+                                  # (species_agent.py now defaults to 0.55, the value its screening
+                                  # step always applied in the shipped runs; the two are kept apart
+                                  # on purpose so this table stays reproducible.)
 SPARSE_MIN_POS = 5                 # framework default: sparse screening enabled only when positive samples >=5 (sparse_min_pos)
 SPARSE_TOPK_BASE = 6               # framework default sparse_topk, progressively relaxed with n_pos
 VARIANCE_TOP = 12                  # framework default pre-screen top-12

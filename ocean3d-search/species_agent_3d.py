@@ -48,6 +48,9 @@ class Searcher3D:
         # "serpentine"=fully reproduces the old 3D linear raster.
         self.stage1_scan_mode = config.get("stage1_scan_mode", "spread")
         self.n_bins = int(config.get("n_bins", N_BINS))
+        # Minimum AUC for a covariate to survive the screening step. The default reproduces
+        # the value this step used to hard-code, so shipped behaviour is unchanged.
+        self.weak_signal_min_auc = float(config.get("weak_signal_min_auc", 0.55))
         self._rng = random.Random(0)
         self.n_actions = len(DIRS) * len(STEPS)
         self.guidance_on = config.get("guidance_on", True)
@@ -178,7 +181,8 @@ class Searcher3D:
                 for k, _ in ranked_v:
                     auc_w[k] = self._auc(covs[pos_idx, k], covs[neg_idx, k])
                 ranked_a = sorted(auc_w.items(), key=lambda x: -x[1])[:topk]
-                keep = {k: max(w - 0.5, 0.0) ** 2 * 4.0 for k, w in ranked_a if w > 0.55}
+                keep = {k: max(w - 0.5, 0.0) ** 2 * 4.0 for k, w in ranked_a
+                        if w > self.weak_signal_min_auc}
                 if keep:
                     raw_w = keep
                 self._feature_log.append(

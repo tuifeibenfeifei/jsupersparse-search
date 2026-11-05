@@ -17,6 +17,14 @@ plt.rcParams["axes.unicode_minus"] = False
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
+# The species framework rows come from the earlier sparse-species runs that were
+# distributed with the repository (results/species_search/framework_species_*_params2.csv
+# and results/species_search/adaptive/*_summary.csv). Those runs used their own protocol,
+# target = 20 cells and a 20000-query budget, which differs from the current
+# common.py protocol (TARGET = 80, MAX_QUERIES = 60000). Labels and the success rate
+# below therefore describe the archived runs, not the constants of run_compare.py.
+ARCHIVE_TARGET = 20
+ARCHIVE_BUDGET = 20000
 RES = ROOT / "results" / "species_search"
 OUT = RES / "compare_oldnew"
 
@@ -52,7 +60,7 @@ def load_framework(species):
     mp = df["points_found"].mean()
     mq = df["total_queries"].mean()
     mc = df["cov_area_cells"].mean()  # size of the framework covariate guidance area (not de-duplicated visits; used as a proxy)
-    sr = (df["points_found"] >= 20).mean() * 100
+    sr = (df["points_found"] >= ARCHIVE_TARGET).mean() * 100
     rows.append(("framework_params2", KIND["framework_params2"], round(mp, 2),
                  round(mq, 1), round(mc, 1), round(sr, 1)))
     # A11 adaptive mean row
@@ -82,7 +90,7 @@ def build(species):
         mean_covered=("covered_cells", "mean"),
         n=("seed", "count"),
     ).reset_index()
-    sr = det.groupby("algo")["points_found"].apply(lambda s: (s >= 20).mean() * 100).reset_index()
+    sr = det.groupby("algo")["points_found"].apply(lambda s: (s >= ARCHIVE_TARGET).mean() * 100).reset_index()
     sr.columns = ["algo", "success"]
     g = g.merge(sr, on="algo")
 
@@ -113,17 +121,17 @@ def plot(species, df):
     fig, ax1 = plt.subplots(figsize=(13, 6))
     x = np.arange(len(labels))
     ax1.bar(x, mp, color=colors, alpha=0.85, label="Mean points found")
-    ax1.set_ylabel("Mean points found (target=20)", color="#333333")
-    ax1.set_ylim(0, 22)
-    ax1.axhline(20, ls="--", color="green", lw=1, alpha=0.6)
+    ax1.set_ylabel(f"Mean points found (target={ARCHIVE_TARGET})", color="#333333")
+    ax1.set_ylim(0, ARCHIVE_TARGET * 1.1)
+    ax1.axhline(ARCHIVE_TARGET, ls="--", color="green", lw=1, alpha=0.6)
     ax2 = ax1.twinx()
     ax2.plot(x, mq, "o-", color="#DD8452", label="Mean queries")
-    ax2.set_ylabel("Mean queries (budget 20000)", color="#DD8452")
-    ax2.set_ylim(0, 21000)
+    ax2.set_ylabel(f"Mean queries (budget {ARCHIVE_BUDGET})", color="#DD8452")
+    ax2.set_ylim(0, ARCHIVE_BUDGET * 1.05)
     ax1.set_xticks(x)
     ax1.set_xticklabels(labels, rotation=35, ha="right", fontsize=9)
     ax1.set_title(f"Rare-species search algorithm comparison - {SPECIES_CN[species]}"
-                  f" (20 seeds, target=20, budget 20000)")
+                  f" (seeds 101 to 120, target={ARCHIVE_TARGET}, budget={ARCHIVE_BUDGET})")
     # legend
     from matplotlib.patches import Patch
     from matplotlib.lines import Line2D
