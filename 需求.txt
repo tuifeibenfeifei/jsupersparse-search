@@ -376,10 +376,12 @@ deep-sea-exploration/
    
    对外暴露的类/函数：
    - class StateManager
-     - __init__(self, temperature_enabled: bool = False, temperature_bins: int = 5,
-                temperature_precision: int = 2, spatial_granularity: int = 32)
-       输入：temperature_enabled(温度并入状态开关), temperature_bins(温度直方图分桶数),
-             temperature_precision(温度量化精度，小数位), spatial_granularity(状态区域粒度，区块数)
+     - __init__(self, temperature_enabled: bool = True,
+               temperature_precision: int = 2, spatial_granularity: int = 32)
+      输入：temperature_enabled(温度并入状态开关), temperature_precision(温度量化精度，小数位),
+            spatial_granularity(状态区域粒度，区块数)
+      注意：temperature_bins 只出现在 yaml 配置里，StateManager 的构造函数不接收该参数；
+            温度按 temperature_precision 量化后直接进入状态元组，不做直方图分桶。
        功能：构造函数。区域粒度默认 32 区块（温度层分辨率为 16 区块，须大于 16 温度才有增量信息）
      - get_state(self, chunk_x: int, chunk_z: int, temperature: float) -> Tuple
        输入：chunk_x(区块X坐标), chunk_z(区块Z坐标), temperature(温度值)
@@ -398,7 +400,7 @@ deep-sea-exploration/
        功能：episode 开始时重置访问记录；运行中可热更新配置
    
    被谁调用：main_algorithm.py
-   数据流向：(chunk_x, chunk_z, temp) → 离散化/编码 → state_id(Tuple)
+   数据流向：(chunk_x, chunk_z, temp) → 除以 spatial_granularity 取区域 + 温度量化 → get_state() 直接返回 hashable Tuple
 
 【L1 策略插件层】
 
@@ -433,8 +435,8 @@ deep-sea-exploration/
    
    base_finder.py（抽象基类）：
    - class BaseFinder
-     - get_next_chunk(self, current_cx: int, current_cz: int) -> Tuple[int, int]
-       输入：current_cx(当前区块X), current_cz(当前区块Z)
+     - get_next_chunk(self, current_x: int, current_z: int) -> Tuple[int, int]
+       输入：current_x(当前区块X), current_z(当前区块Z)
        输出：下一个目标区块坐标(next_cx, next_cz)
        功能：抽象方法，子类必须实现
      - reset(self) -> None
@@ -468,8 +470,10 @@ deep-sea-exploration/
      功能：到达从未访问过的状态时返回正向奖励
    
    penalty_reward.py：
-   - def calculate(is_out_of_bounds: bool, is_repeat_visit: bool, oob_penalty: float, repeat_penalty: float) -> float
-     输入：is_out_of_bounds(是否越界), is_repeat_visit(是否重复访问), oob_penalty(越界惩罚值), repeat_penalty(重复访问惩罚值)
+   - def calculate(self, is_out_of_bounds: bool = False, is_repeated_visit: bool = False) -> float
+     输入：is_out_of_bounds(是否越界), is_repeated_visit(是否重复访问)；
+          惩罚数值本身由构造函数从配置读取（out_of_bounds 默认 -10.0、repeated_visit 默认 -5.0），
+          不通过 calculate 的形参传入
      输出：惩罚值(float)
      功能：越界或走老路时返回负奖励
    
@@ -772,8 +776,8 @@ cubiomes.dll 是在巨人肩膀上，利用其查询坐标温度值和判定深�
 
 路径A：消融实验完整调用链
   scripts/run_ablation_stage1.py（stage2~4 同理，共用 _ablation_common.py 公共函数）
-    → 读取 configs/ablation/stageX_*/xxx_sweep.yaml（获取扫描列表和配置）
-    → 循环：for config_item in sweep_list:
+    → 读取 configs/ablation/stageX_*/ 下的 yaml（扫描键名以 _list 结尾，例如 micro_strategy_list）
+    → scripts/_ablation_common.py 的 expand_sweep() 按 _list 逐个取值并合并公共配置
     →   explorer = DeepSeaExplorer(config_item)
     →   循环：for seed in WORLD_SEEDS(1~20):
     →     循环：for repeat in range(REPEATS):
@@ -1003,7 +1007,7 @@ cubiomes.dll 是在巨人肩膀上，利用其查询坐标温度值和判定深�
 - run_framework_features.py 自动特征选择诊断（输入全部 19，输出选中特征汇总/明细）
 - extract_feature_evolution.py 特征选择演化数据提取（分桶统计权重序列）
 - make_plots.py       生成物种线可视化 PNG
-- fetch_occurrences.ps1 / fetch_snow_leopard.ps1  GBIF 拉取脚本
+- fetch_occurrences.ps1  GBIF 拉取脚本（云豹记录改用修改 taxonKey 后的同一脚本抓取，仓库内没有独立的 fetch_snow_leopard.ps1）
 - data/<subdir>/      occurrences.csv + oracle.npz（black_muntjac / clouded_leopard / worldclim）
   注意：该目录因体积原因不随仓库分发（已写入 .gitignore），需自行下载 GBIF 记录与
   WorldClim wc2.1_5m_bio 后运行 build_oracle.py 生成；缺失时 common.py 的 make_oracle()
@@ -1683,7 +1687,7 @@ Go-Explore、MAP-Elites、好奇搜索（RND）、自适应采样。结果必须
 
 【结果要点】
 1. 机制落地：新增 7 个 config 键（time_decay 默认 False、decay_mode="exp"、decay_tau=300、decay_window=400、decay_min_weight=0.05、q_decay_tau=200、q_decay_every=25）+ 四项机制（分箱密度按样本年龄降权 / AUC 选参时效过滤 / Q 表周期衰减 / 簇簿记经衰减后 score_map 自然传导）。等价性 canary：decay OFF 三配置×5 seeds（云豹A11/黑麂sparse/CHL5）**15/15 逐点一致**；τ→∞ 冒烟 3/3 一致；时变冒烟 decay off 20/937 vs on 20/704；性能 decay on 反而快约 25%。
-2. 时变重测（10 seeds 101-110，results\timevary_search\v3\）：
+2. 时变重测（10 seeds 101-110；当轮产出在 results\timevary_search\v3\，未随仓库分发，仓库内保留的是第五轮的 results\timevary_search\v5\）：
    - 慢漂移：off 18.0±2.1(50%) / τ150 20.0(100%,q909) / τ300 20.0(100%,q893) / τ600 19.2(80%,q1022) / τ300+运动外推 20.0(100%,q705) / GP-UCB 3.1 / 爬山 20.0(q377)。
    - 突变：off 11.3±1.7(0%) / τ150 16.5(40%) / τ300 18.9(70%,q1373) / τ600 16.4(40%) / τ300+运动外推 19.2(80%,q1168) / GP-UCB 2.6 / 爬山 20.0(q677)。
    - 验收（如实）：慢漂移 gap=0.0 完全达标；突变单靠衰减 18.9、gap=1.1，距"points≥19 且 gap≤1"差 0.1 未过严格线；叠加运动外推 19.2、gap=0.8 压线达标。τ 呈倒 U 型，τ=300 最优；off 子集(101-108)与 v2 逐点吻合（18.0/11.3 vs 18.1/11.0）。
@@ -1707,7 +1711,7 @@ Go-Explore、MAP-Elites、好奇搜索（RND）、自适应采样。结果必须
 
 【结果要点】
 1. 三项机制落地（全默认关，默认行为=三轮原版逐点等价）：M1 突变检测+空窗压缩（5 键：mutation_detect/mutation_streak_thresh=40/mutation_accel=2.0/mutation_ramp=40/mutation_auto_motion）、M2 Stage1 先验聚焦（stage1_prior + stage1_prior_cov=8）、M3 弱信号加权（weak_signal_boost + weak_signal_min_auc=0.55，默认值与筛选步原先硬编码的门限相同，故行为不变；该键现在真正传入筛选步）。实现后与修复后各跑等价冒烟（黑麂 sparse seed101=20/18835）均 PASS；默认关全量 9 配置×20 seeds=**180 对照 mismatch=0**（防反噬护栏①全绿）。
-2. 时变重测（10 seeds 101-110，results\timevary_search\v4\，验收核心）：
+2. 时变重测（10 seeds 101-110；当轮产出在 results\timevary_search\v4\，未随仓库分发，验收核心。仓库内保留的是第五轮的 results\timevary_search\v5\，该目录下的 run_timevary_v5.py 为复跑脚本）：
    - 突变 abrupt_jump：三轮 decay300=18.9(70%) / decaymotion=19.2(80%)；四轮解耦版 **fix_motion=19.3(80%,q1267)**、**fix mild=19.6(70%)**——双过"≥19 或 gap≤1"验收线（gap 0.7/0.4）；首版（全局加速、AUC 选参耦合）仅 18.0 反低于基线、激进参数 thresh30/accel3 仅 16.1。
    - 慢漂移 moving_plume：fix 默认 / fix_motion 保持 20.0(100%) 不倒退，fix_motion q=785 还快于 decay300 的 q=893；mild 有 seed110=16 单点滑落（如实点名）。
    - 空窗压缩证据（featurelog）：seed110 三轮至 1500 查询仍未重建 → 突变机制重建@q1040（**压缩≥460 查询**）；seed101 重建 1480→1300（提前 180 查询）；修复版 seed109 谷底 23-29 不再深跌。

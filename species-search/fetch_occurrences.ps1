@@ -1,6 +1,10 @@
 # fetch_occurrences.ps1 - fetch Muntiacus crinifrons occurrences from GBIF API
 $taxonKey = 2440945
-$out = 'REPO_ROOT\deep-sea-exploration\species-search\data\gbif\occurrences.csv'
+# build_oracle.py reads data/<species_subdir>/occurrences.csv, so the file is written
+# into data/black_muntjac/ (the taxonKey above). For the clouded leopard, change the
+# taxonKey and the subdirectory name together. It is resolved relative to this script.
+$repo = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+$out = Join-Path $repo 'species-search\data\black_muntjac\occurrences.csv'
 New-Item -ItemType Directory -Force (Split-Path $out) | Out-Null
 
 $all = @()

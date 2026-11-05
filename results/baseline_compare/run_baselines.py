@@ -3,9 +3,9 @@
 import os
 from pathlib import Path
 REPO_ROOT = Path(__file__).resolve()
-for _ in range(8):
-    if (REPO_ROOT / 'configs').is_dir():
-        break
+while not (REPO_ROOT / 'configs').is_dir():
+    if REPO_ROOT.parent == REPO_ROOT:
+        raise RuntimeError("repository root (containing configs/) not found")
     REPO_ROOT = REPO_ROOT.parent
 # --------------------------------------
 """run_baselines.py - Task 1: 4 new scenarios compared with random / grid / hill_climb three baselines.
